@@ -163,7 +163,7 @@ textarea.big:focus{outline:none;border-color:var(--ink);background:#fff}
 
 <div id="app">
   <div class="topbar">
-    <h1><span id="brandName">子良</span><small>工時本</small></h1>
+    <h1><span id="brandName">子良</span><small>工時本 <span id="verTag"></span></small></h1>
     <button class="round" id="btnSettings" aria-label="設定"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
   </div>
 
@@ -296,6 +296,7 @@ textarea.big:focus{outline:none;border-color:var(--ink);background:#fff}
 <script>
 (function(){
 const KEY='zilang-timesheet-v1';
+const APP_VERSION=7;
 const $=id=>document.getElementById(id);
 const pad=n=>String(n).padStart(2,'0');
 const today=new Date();
@@ -625,7 +626,17 @@ $('reportPrint').addEventListener('click',()=>{
   setTimeout(()=>window.print(),50);
 });
 
+$('verTag').textContent='v'+APP_VERSION;
 render();
+/* ---------- update check ---------- */
+fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.json()).then(v=>{
+  if(v&&Number(v.version)>APP_VERSION){
+    const bar=document.createElement('div');bar.className='samplebar';bar.style.marginTop='10px';
+    bar.innerHTML='<span>有新版本（v'+v.version+'）</span><button id="btnUpdate">立即更新</button>';
+    document.querySelector('.monthnav').insertAdjacentElement('afterend',bar);
+    document.getElementById('btnUpdate').addEventListener('click',()=>{location.replace(location.pathname+'?v='+v.version+'&t='+Date.now());});
+  }
+}).catch(()=>{});
 })();
 </script>
 </body></html>
