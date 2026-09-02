@@ -95,6 +95,7 @@ button{cursor:pointer;background:none;border:0;padding:0}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
 .seg{display:grid;grid-template-columns:1fr 1fr 1fr;background:var(--tile);border-radius:13px;padding:4px;height:46px;gap:4px}
+.seg.two{grid-template-columns:1fr 1fr}
 .seg button{font-weight:500;color:var(--muted);border-radius:10px}
 .seg button.on{background:#fff;color:var(--ink);font-weight:700;box-shadow:0 1px 3px rgba(0,0,0,.08)}
 .hint{font-size:12px;color:var(--muted);margin:-4px 0 12px}
@@ -120,6 +121,7 @@ textarea.big:focus{outline:none;border-color:var(--ink);background:#fff}
 .preview{display:flex;flex-direction:column;gap:6px;margin:12px 0}
 .preview .prow{display:grid;grid-template-columns:44px 1fr auto;gap:10px;align-items:center;background:var(--tile);border-radius:12px;padding:10px 12px;font-size:13px}
 .preview .prow.bad{background:var(--accent-soft)}
+.preview .prow.other{opacity:.6}
 .preview .prow .d{font-family:var(--mono);color:var(--muted)}
 .preview .prow .m{font-size:11px;color:var(--muted)}
 .preview .prow .a{font-family:var(--mono);text-align:right}
@@ -172,7 +174,7 @@ textarea.big:focus{outline:none;border-color:var(--ink);background:#fff}
   </div>
 
   <div class="hero">
-    <div class="eyebrow">本月申請金額</div>
+    <div class="eyebrow">本月向公司申請金額</div>
     <div class="big num" id="sumAmount">0<small>元</small></div>
     <div class="dates">
       <div><div class="k">結單</div><div class="v num" id="closeDate"></div></div>
@@ -184,7 +186,7 @@ textarea.big:focus{outline:none;border-color:var(--ink);background:#fff}
   <div class="stats">
     <div class="stat"><div class="v num" id="sumDays">0<small>天</small></div><div class="k">出勤</div></div>
     <div class="stat"><div class="v num" id="sumHours">0<small>h</small></div><div class="k">總時數</div></div>
-    <div class="stat"><div class="v num" id="sumRows">0<small>筆</small></div><div class="k">紀錄</div></div>
+    <div class="stat"><div class="v num" id="sumRows">0<small>元</small></div><div class="k">其他雇主</div></div>
   </div>
 
   <div class="samplebar" id="samplebar" hidden><span>目前是範例資料，照你給的表打的</span><button id="clearSample">清除，開始記錄</button></div>
@@ -243,6 +245,7 @@ textarea.big:focus{outline:none;border-color:var(--ink);background:#fff}
         <div class="field"><label>申請金額（手動覆蓋）</label><input type="text" id="fAmountOv" placeholder="留空＝自動"></div>
       </div>
       <div class="field"><label>併入哪個月結算</label><select id="fStmt"></select></div>
+      <div class="field"><label>歸類</label><div class="seg two"><button type="button" id="tagCo" class="on">公司（列入月結表）</button><button type="button" id="tagOther">其他雇主</button></div></div>
     </details>
     <button type="button" class="danger" id="formDelete" hidden>刪除這筆</button>
   </form>
@@ -255,6 +258,7 @@ textarea.big:focus{outline:none;border-color:var(--ink);background:#fff}
   <div class="row"><div class="field"><label>白天時薪</label><input type="text" id="sDay" class="mono" inputmode="numeric"></div><div class="field"><label>半夜時薪</label><input type="text" id="sNight" class="mono" inputmode="numeric"></div></div>
   <div class="row"><div class="field"><label>走道班固定金額</label><input type="text" id="sFlat" class="mono" inputmode="numeric"></div><div class="field"><label>計件每格單價</label><input type="text" id="sPiece" class="mono" inputmode="numeric"></div></div>
   <div class="row"><div class="field"><label>最低計時（小時）</label><input type="text" id="sMin" class="mono" inputmode="decimal"></div><div class="field"><label>發薪日（每月幾號）</label><input type="text" id="sPay" class="mono" inputmode="numeric"></div></div>
+  <div class="field"><label>其他雇主的關鍵字（開頭是這些字的，不列入公司月結表）</label><input type="text" id="sOther" placeholder="凱哥,傑哥,爸,偉謙,璦美,路寬"></div>
   <div class="settings-actions">
     <button class="btn" id="btnExport">備份（複製）</button>
     <button class="btn" id="btnImport">還原（貼上）</button>
@@ -294,11 +298,11 @@ const ymOf=d=>d.slice(0,7);
 
 let state=load();
 let view=state.entries.length?latestStmt():ymOf(isoToday());
-let editing=null, mode='hour';
+let editing=null, mode='hour', tag='';
 
 function isoToday(){return today.getFullYear()+'-'+pad(today.getMonth()+1)+'-'+pad(today.getDate());}
 function latestStmt(){return state.entries.map(e=>e.stmt).sort().pop();}
-function defaults(){return {settings:{name:'子良',dayRate:260,nightRate:310,flatRate:1500,pieceRate:70,minHours:4,payDay:10},entries:[],sample:false};}
+function defaults(){return {settings:{name:'子良',dayRate:260,nightRate:310,flatRate:1500,pieceRate:70,minHours:4,payDay:10,otherKeys:'凱哥,傑哥,爸,偉謙,璦美,路寬'},entries:[],sample:false};}
 function load(){
   try{const raw=localStorage.getItem(KEY); if(raw){const s=JSON.parse(raw); return Object.assign(defaults(),s,{settings:Object.assign(defaults().settings,s.settings||{})});}}catch(e){}
   const s=defaults(); s.sample=true; s.entries=sampleEntries(); return s;
@@ -348,9 +352,10 @@ function compute(e){
     night=Math.min(night,total);
     if(total<S.minHours&&total>0){total=S.minHours;}
     const day=Math.max(0,total-night);
-    if(night>0){ hoursText=fmt(day)+'+半夜'+fmt(night)+'小'; rateText=dayRate+'/'+nightRate; amount=day*dayRate+night*nightRate; }
+    if(night>0){ hoursText=(day>0?fmt(day)+'+':'')+'半夜'+fmt(night)+'小'; rateText=dayRate+'/'+nightRate; amount=day*dayRate+night*nightRate; }
     else{ hoursText=fmt(total); rateText=String(dayRate); amount=total*dayRate; }
   }else{ rateText=String(dayRate); }
+  if(e.tag==='other'&&e.mode==='hour')amount=null; // 其他雇主的時薪不一定相同，金額由他自己填
   let amountText=amount==null?'':String(Math.round(amount));
   const extra=Number(e.extra)||0;
   if(extra>0)amountText=(amountText||'0')+'+'+extra+(e.extraNote||'');
@@ -373,11 +378,11 @@ function render(){
   $('monthTitle').textContent=r.y+'年'+r.m+'月';
   const rows=monthEntries(view);
   const days=new Set(rows.map(e=>e.date)).size;
-  let hours=0,amount=0;
-  rows.forEach(e=>{const c=compute(e);hours+=c.hoursNum;amount+=c.amountNum;});
+  let hours=0,amount=0,other=0;
+  rows.forEach(e=>{const c=compute(e);if(e.tag==='other'){other+=c.amountNum;return;}hours+=c.hoursNum;amount+=c.amountNum;});
   $('sumDays').innerHTML=days+'<small>天</small>';
   $('sumHours').innerHTML=fmt(hours)+'<small>h</small>';
-  $('sumRows').innerHTML=rows.length+'<small>筆</small>';
+  $('sumRows').innerHTML=other.toLocaleString('zh-TW')+'<small>元</small>';
   $('sumAmount').innerHTML=amount.toLocaleString('zh-TW')+'<small>元</small>';
   const [vy,vm]=view.split('-').map(Number);
   const ld=lastDay(view);
@@ -394,14 +399,15 @@ function render(){
   $('empty').hidden=rows.length>0;
   rows.forEach(e=>{
     const c=compute(e); const [y,m,d]=e.date.split('-').map(Number);
-    const b=document.createElement('button'); b.type='button'; b.className='entry'+(ymOf(e.date)!==e.stmt?' other':'');
+    const b=document.createElement('button'); b.type='button'; b.className='entry'+(ymOf(e.date)!==e.stmt||e.tag==='other'?' other':'');
     const metaBits=[];
-    if(e.start&&e.end)metaBits.push(`<span class="num">${e.start}–${e.end}</span>`);
+    if(e.start)metaBits.push(`<span class="num">${e.start}–${e.end||'?'}</span>`);
     if(e.mode==='flat')metaBits.push('<span class="chip">固定</span>');
     else if(e.mode==='piece')metaBits.push('<span class="chip">計件 '+(e.qty||'?')+'格</span>');
     else{ if(c.restText&&c.restText!=='X')metaBits.push('休'+c.restText+'h'); if(/半夜/.test(c.hoursText))metaBits.push('<span class="chip">含半夜</span>'); }
     if(c.pending)metaBits.push('<span class="chip warn">待補</span>');
     if(Number(e.extra)>0)metaBits.push('<span class="chip">+'+e.extra+(e.extraNote||'')+'</span>');
+    if(e.tag==='other')metaBits.unshift('<span class="chip">其他雇主</span>');
     if(ymOf(e.date)!==e.stmt)metaBits.push('<span class="chip">併入本月</span>');
     b.innerHTML=`<div class="date num"><b>${d}</b><i>${m}月</i></div><div class="main"><div class="place">${esc(e.place)}</div><div class="meta">${metaBits.join('')}</div></div><div class="amt num"><b>${c.pending?'—':c.amountNum.toLocaleString('zh-TW')}</b><i>${c.hoursText?(e.mode==='piece'||/半夜/.test(c.hoursText)?c.hoursText:c.hoursText+'h'):(e.mode==='flat'?'固定':'')}</i></div>`;
     b.addEventListener('click',()=>openForm(e));
@@ -419,6 +425,9 @@ function setMode(m){mode=m;['hour','flat','piece'].forEach(k=>$('mode'+k[0].toUp
 $('modeHour').addEventListener('click',()=>setMode('hour'));
 $('modeFlat').addEventListener('click',()=>setMode('flat'));
 $('modePiece').addEventListener('click',()=>setMode('piece'));
+function setTag(t){tag=t;$('tagCo').classList.toggle('on',t==='');$('tagOther').classList.toggle('on',t==='other');}
+$('tagCo').addEventListener('click',()=>setTag(''));
+$('tagOther').addEventListener('click',()=>setTag('other'));
 
 function fillStmtOptions(date){
   const base=ymOf(date||isoToday()); const sel=$('fStmt'); sel.innerHTML='';
@@ -429,13 +438,13 @@ function openForm(e){
   $('formTitle').textContent=e?'編輯':'新增一筆';
   $('formDelete').hidden=!e;
   const S=state.settings;
-  const v=e||{date:isoToday(),place:'',start:'08:00',end:'17:00',rest:'',night:'',rate:'',flat:'',qty:'',pieceRate:'',overtime:'',extra:'',extraNote:'',hoursOv:'',amountOv:'',mode:'hour',stmt:ymOf(isoToday())};
+  const v=e||{date:isoToday(),place:'',start:'08:00',end:'17:00',rest:'',night:'',rate:'',flat:'',qty:'',pieceRate:'',overtime:'',extra:'',extraNote:'',hoursOv:'',amountOv:'',mode:'hour',tag:'',stmt:ymOf(isoToday())};
   $('fDate').value=v.date;$('fPlace').value=v.place;$('fStart').value=v.start;$('fEnd').value=v.end;
   $('fRest').value=v.rest;$('fNight').value=v.night||'';$('fRate').value=v.rate||S.dayRate;$('fFlat').value=v.flat||S.flatRate;$('fQty').value=v.qty||'';$('fPieceRate').value=v.pieceRate||S.pieceRate;
   $('fOvertime').value=v.overtime;$('fExtra').value=v.extra;$('fExtraNote').value=v.extraNote;$('fHoursOv').value=v.hoursOv;$('fAmountOv').value=v.amountOv;
   fillStmtOptions(v.date); $('fStmt').value=v.stmt;
   if(!$('fStmt').value){const o=document.createElement('option');o.value=v.stmt;o.textContent=v.stmt;$('fStmt').appendChild(o);$('fStmt').value=v.stmt;}
-  setMode(v.mode||'hour');
+  setMode(v.mode||'hour'); setTag(v.tag||'');
   openSheet('formSheet');
   if(!e)setTimeout(()=>$('fPlace').focus(),250);
 }
@@ -443,7 +452,7 @@ function readForm(){
   return {id:editing?editing.id:uid(),date:$('fDate').value,place:$('fPlace').value.trim(),start:$('fStart').value,end:$('fEnd').value,
     rest:$('fRest').value.trim(),night:$('fNight').value.trim(),rate:$('fRate').value.trim(),flat:$('fFlat').value.trim(),qty:$('fQty').value.trim(),pieceRate:$('fPieceRate').value.trim(),
     overtime:$('fOvertime').value.trim(),extra:$('fExtra').value.trim(),extraNote:$('fExtraNote').value.trim(),
-    hoursOv:$('fHoursOv').value.trim(),amountOv:$('fAmountOv').value.trim(),mode,stmt:$('fStmt').value};
+    hoursOv:$('fHoursOv').value.trim(),amountOv:$('fAmountOv').value.trim(),mode,tag,stmt:$('fStmt').value};
 }
 function preview(){
   const e=readForm(); const c=compute(e);
@@ -470,27 +479,36 @@ $('nextM').addEventListener('click',()=>{view=shift(view,1);render();});
 $('clearSample').addEventListener('click',()=>{state.sample=false;state.entries=[];save();view=ymOf(isoToday());render();});
 
 /* settings */
-$('btnSettings').addEventListener('click',()=>{const S=state.settings;$('sName').value=S.name;$('sDay').value=S.dayRate;$('sNight').value=S.nightRate;$('sFlat').value=S.flatRate;$('sPiece').value=S.pieceRate;$('sMin').value=S.minHours;$('sPay').value=S.payDay;openSheet('settingsSheet');});
+$('btnSettings').addEventListener('click',()=>{const S=state.settings;$('sName').value=S.name;$('sDay').value=S.dayRate;$('sNight').value=S.nightRate;$('sFlat').value=S.flatRate;$('sPiece').value=S.pieceRate;$('sMin').value=S.minHours;$('sPay').value=S.payDay;$('sOther').value=S.otherKeys||'';openSheet('settingsSheet');});
 $('setCancel').addEventListener('click',closeSheets);
-$('setSave').addEventListener('click',()=>{state.settings={name:$('sName').value.trim()||'工時',dayRate:Number($('sDay').value)||260,nightRate:Number($('sNight').value)||310,flatRate:Number($('sFlat').value)||1500,pieceRate:Number($('sPiece').value)||70,minHours:Number($('sMin').value)||0,payDay:Number($('sPay').value)||10};save();closeSheets();render();});
+$('setSave').addEventListener('click',()=>{state.settings={name:$('sName').value.trim()||'工時',dayRate:Number($('sDay').value)||260,nightRate:Number($('sNight').value)||310,flatRate:Number($('sFlat').value)||1500,pieceRate:Number($('sPiece').value)||70,minHours:Number($('sMin').value)||0,payDay:Number($('sPay').value)||10,otherKeys:$('sOther').value.trim()};save();closeSheets();render();});
 $('btnExport').addEventListener('click',async()=>{const txt=JSON.stringify(state);try{await navigator.clipboard.writeText(txt);$('btnExport').textContent='已複製';}catch(e){window.prompt('全選複製這段文字：',txt);}setTimeout(()=>$('btnExport').textContent='備份（複製）',2500);});
 $('btnImport').addEventListener('click',()=>{const txt=window.prompt('貼上之前備份的內容：');if(!txt)return;try{const s=JSON.parse(txt);if(!Array.isArray(s.entries))throw 0;state=Object.assign(defaults(),s);state.sample=false;save();view=latestStmt()||view;closeSheets();render();}catch(e){alert('這段內容不是有效的備份。');}});
 $('btnWipe').addEventListener('click',()=>{if(!confirm('確定清除全部紀錄？建議先備份。'))return;state=defaults();save();view=ymOf(isoToday());closeSheets();render();});
 
 /* ---------- import from notes ---------- */
+const CN_NUM={'一':1,'二':2,'兩':2,'三':3,'四':4,'半':0.5,'一個半':1.5,'1':1,'2':2,'3':3,'0.5':0.5,'1.5':1.5};
+function otherKeywords(){return String(state.settings.otherKeys||'').split(/[,，\s]+/).filter(Boolean);}
+function isOther(place){return otherKeywords().some(k=>place.startsWith(k));}
+function isFlatPlace(place){return /^進.*走道/.test(place)||/^拆櫃/.test(place);}
+function blankEntry(stmt){return {id:uid(),date:'',place:'',start:'',end:'',rest:'',night:'',rate:'',flat:'',qty:'',pieceRate:'',overtime:'',extra:'',extraNote:'',hoursOv:'',amountOv:'',mode:'hour',tag:'',stmt};}
+// time token: 8. / 8.30 / 17:30 / 08:00 / 0.-4.30
+const T='(\\d{1,2})(?:[.:：](\\d{2}))?\\.?';
+const RANGE=new RegExp('(?:^|\\s|(?<=[^\\d]))'+T+'\\s*[-~～–—到至]\\s*'+T+'(?=\\s|$|[^\\d])');
+const OPEN=new RegExp('(?:^|\\s|(?<=[^\\d]))'+T+'\\s*[-~～–—]\\s*(?=\\s|$)');
+const LONE=new RegExp('(?:^|\\s|(?<=[^\\d.:]))(\\d{1,2})\\.(\\d{2})?(?=\\s|$)');
 function parseImport(text, stmt){
   const [sy,sm]=stmt.split('-').map(Number);
   let curM=sm, curD=null; const out=[];
   const toTime=(h,m)=>pad(Number(h))+':'+pad(Number(m||0));
   text.split(/\r?\n/).forEach(raw=>{
-    let line=raw.trim(); if(!line)return;
-    const e={id:uid(),date:'',place:'',start:'',end:'',rest:'',night:'',rate:'',flat:'',qty:'',pieceRate:'',overtime:'',extra:'',extraNote:'',hoursOv:'',amountOv:'',mode:'hour',stmt};
-    let warn='';
-    if(line.includes('\t')){ // pasted from Excel: 月 日 地點 起 止 休息 總時數 加班 單價 金額
+    let line=raw.replace(/[　\t]+/g,' ').trim(); if(!line)return;
+    const e=blankEntry(stmt); let warn='', skip='';
+    if(raw.includes('\t')&&raw.split('\t').length>=5){ // pasted from Excel: 月 日 地點 起 止 休息 總時數 加班 單價 金額
       const c=raw.split('\t').map(x=>x.trim());
       if(!c[2]&&!/^\d+$/.test(c[1]||''))return;
       if(/^\d+$/.test(c[0]))curM=Number(c[0]); if(/^\d+$/.test(c[1]))curD=Number(c[1]);
-      e.place=c[2]||''; const tm=x=>{const m=String(x||'').match(/(\d{1,2})[:：](\d{2})/);return m?toTime(m[1],m[2]):'';};
+      e.place=c[2]||''; const tm=x=>{const m=String(x||'').match(/(\d{1,2})[:：.](\d{2})/);return m?toTime(m[1],m[2]):'';};
       e.start=tm(c[3]); e.end=tm(c[4]); e.rest=(c[5]||'').toUpperCase()==='X'?'X':(c[5]||'');
       const hrs=c[6]||'', rate=c[8]||'', amt=c[9]||'';
       if(/^\d+(\.\d+)?\s*(格|B|件)$/i.test(hrs)){e.mode='piece';e.qty=hrs.match(/\d+(\.\d+)?/)[0];e.pieceRate=rate.replace(/\D/g,'')||'';}
@@ -499,22 +517,40 @@ function parseImport(text, stmt){
       if(amt&&!/^=/.test(amt)&&/[^\d]/.test(amt))e.amountOv=amt;
     }else{
       let s=line.replace(/[，,]/g,' ');
-      let m=s.match(/^(\d{1,2})\s*[\/／.月]\s*(\d{1,2})\s*日?\s*/); if(m){curM=Number(m[1]);curD=Number(m[2]);s=s.slice(m[0].length);}
-      else{m=s.match(/^(\d{1,2})\s*日?\s+/); if(m&&Number(m[1])<=31){curD=Number(m[1]);s=s.slice(m[0].length);}}
-      m=s.match(/(\d{1,2})[:：]?(\d{2})?\s*[-~～–—到至]\s*(\d{1,2})[:：]?(\d{2})?/);
-      if(m){e.start=toTime(m[1],m[2]);e.end=toTime(m[3],m[4]);s=s.replace(m[0],' ');}
-      m=s.match(/休\s*(\d+(?:\.\d+)?)/); if(m){e.rest=m[1];s=s.replace(m[0],' ');}
+      // date: 8/1, 8月1日, or bare day at line start
+      let m=s.match(/^(\d{1,2})\s*[\/／月]\s*(\d{1,2})\s*日?\s*/); if(m){curM=Number(m[1]);curD=Number(m[2]);s=s.slice(m[0].length);}
+      else{m=s.match(/^(\d{1,2})\s+(?![-~～–—])/); if(m&&Number(m[1])<=31&&!/^\d{1,2}\s+\d{1,2}[.:]/.test(s)){curD=Number(m[1]);s=s.slice(m[0].length);}}
+      // rest
+      m=s.match(/休\s*([一二兩三四半]|\d+(?:\.\d+)?)\s*(?:個半|小時|小|h)?/); if(m){const v=m[1]+(m[0].includes('個半')?'個半':'');e.rest=String(CN_NUM[v]!==undefined?CN_NUM[v]:Number(m[1]));s=s.replace(m[0],' ');}
+      if(/未休|沒休|无休/.test(s)){e.rest='X';s=s.replace(/未休|沒休|无休/,' ');}
       if(/(^|\s)[xX](\s|$)/.test(s)){e.rest='X';s=s.replace(/(^|\s)[xX](\s|$)/,' ');}
-      m=s.match(/(\d+(?:\.\d+)?)\s*(格|件)/); if(m){e.mode='piece';e.qty=m[1];s=s.replace(m[0],' ');}
+      // piece: 79B / 79格 / 79件
+      m=s.match(/(?:^|\s)(\d+(?:\.\d+)?)\s*(格|件|B)(?=\s|$)/i); if(m){e.mode='piece';e.qty=m[1];s=s.replace(m[0],' ');}
+      // time range
+      m=s.match(RANGE);
+      if(m){e.start=toTime(m[1],m[2]);e.end=toTime(m[3],m[4]);s=s.replace(m[0],' ');}
+      else{ m=s.match(OPEN); if(m){e.start=toTime(m[1],m[2]);s=s.replace(m[0],' ');}
+        else{ m=s.match(LONE); if(m){e.start=toTime(m[1],m[2]);s=s.replace(m[0],' ');} } }
+      // explicit night hours
       m=s.match(/半夜\s*(\d+(?:\.\d+)?)/); if(m){e.night=m[1];s=s.replace(m[0],' ');}
-      m=s.match(/(^|\s)([1-9][0-9]{3})(\s|$)/); if(m&&e.mode!=='piece'){e.mode='flat';e.flat=m[2];s=s.replace(m[0],' ');}
+      // extra: +1200寵物展
       m=s.match(/\+\s*(\d{3,5})\s*([^\s\d]+)?/); if(m){e.extra=m[1];e.extraNote=m[2]||'';s=s.replace(m[0],' ');}
+      // standalone amount (4 digits) => flat
+      m=s.match(/(?:^|\s)([1-9]\d{3})(?=\s|$)/); if(m&&e.mode!=='piece'){e.mode='flat';e.flat=m[1];s=s.replace(m[0],' ');}
+      // leftover stray tokens like "8."
+      s=s.replace(/(^|\s)\d{1,2}\.(?=\s|$)/g,' ');
       e.place=s.replace(/\s+/g,' ').trim();
+      // rules
+      if(e.mode==='hour'&&e.place&&isFlatPlace(e.place)&&!isOther(e.place)){e.mode='flat';e.flat='';}
+      if(e.mode==='hour'&&e.start&&e.end&&!e.rest){ let d=(mins(e.end)-mins(e.start))/60; if(d<=0)d+=24; e.rest=d>=8?'1':'X'; }
+      if(e.place&&isOther(e.place))e.tag='other';
+      if(!e.start&&!e.qty&&e.mode==='hour'&&/^\S{1,6}\d{2,3}$/.test(e.place))skip='不是工作紀錄';
     }
     if(!curD)warn='沒有日期';
     if(!e.place)warn='沒有地點';
     let y=sy; if(curM===12&&sm===1)y=sy-1;
     e.date=y+'-'+pad(curM)+'-'+pad(curD||1);
+    if(skip)warn=skip;
     out.push({e,warn,raw});
   });
   return out;
@@ -526,9 +562,9 @@ function renderImportPreview(){
   let ok=0;
   impRows.forEach(({e,warn})=>{
     const c=compute(e); const d=Number(e.date.slice(8)), mo=Number(e.date.slice(5,7));
-    const div=document.createElement('div'); div.className='prow'+(warn?' bad':'');
-    const bits=[]; if(e.start)bits.push(e.start+'–'+e.end); if(e.rest)bits.push('休'+e.rest); if(e.mode==='piece')bits.push(e.qty+'格'); if(e.mode==='flat')bits.push('固定'); if(c.hoursText&&e.mode==='hour')bits.push(c.hoursText+'h'); if(warn)bits.push('⚠ '+warn);
-    div.innerHTML=`<div class="d">${mo}/${d}</div><div><div>${esc(e.place||'（沒有地點）')}</div><div class="m">${bits.join(' · ')}</div></div><div class="a">${c.amountText?esc(c.amountText):'待補'}</div>`;
+    const div=document.createElement('div'); div.className='prow'+(warn?' bad':'')+(e.tag==='other'?' other':'');
+    const bits=[]; if(e.start)bits.push(e.start+'–'+(e.end||'?')); if(e.rest&&e.mode==='hour')bits.push('休'+e.rest); if(e.mode==='piece')bits.push(e.qty+'格'); if(e.mode==='flat')bits.push('固定'); if(c.hoursText&&e.mode==='hour')bits.push(c.hoursText+(/半夜/.test(c.hoursText)?'':'h')); if(e.tag==='other')bits.push('<span class="chip">其他雇主</span>'); if(c.pending&&!warn)bits.push('<span class="chip warn">待補</span>'); if(warn)bits.push('⚠ '+warn);
+    div.innerHTML=`<div class="d">${mo}/${d}</div><div><div>${esc(e.place||'（沒有地點）')}</div><div class="m">${bits.join(' · ')}</div></div><div class="a">${c.amountText?esc(c.amountText):'—'}</div>`;
     box.appendChild(div); if(!warn)ok++;
   });
   $('impSave').disabled=ok===0; $('impSave').textContent=ok?`匯入 ${ok} 筆`:'匯入';
@@ -550,7 +586,7 @@ $('impSave').addEventListener('click',()=>{
 
 /* ---------- report ---------- */
 function buildPaper(){
-  const rows=monthEntries(view); const r=roc(view); const S=state.settings;
+  const rows=monthEntries(view).filter(e=>e.tag!=='other'); const r=roc(view); const S=state.settings;
   const last=lastDay(view);
   let html=`<div class="pname">${esc(S.name)}</div><div class="prange">${r.y}年　${r.m}月　1日　至　${r.m}月　${last}日</div>`;
   html+=`<table><colgroup><col style="width:5%"><col style="width:5%"><col style="width:25%"><col style="width:9%"><col style="width:9%"><col style="width:6%"><col style="width:10%"><col style="width:9%"><col style="width:9.5%"><col style="width:12.5%"></colgroup>
