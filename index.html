@@ -322,7 +322,7 @@ textarea.big:focus{outline:none;border-color:var(--ink);background:#fff}
 <script>
 (function(){
 const KEY='zilang-timesheet-v1';
-const APP_VERSION=12;
+const APP_VERSION=13;
 const $=id=>document.getElementById(id);
 const pad=n=>String(n).padStart(2,'0');
 const today=new Date();
@@ -593,8 +593,8 @@ function parseImport(text, stmt){
       let m=s.match(/^(\d{1,2})\s*[\/／月]\s*(\d{1,2})\s*日?\s*/); if(m){curM=Number(m[1]);curD=Number(m[2]);s=s.slice(m[0].length);}
       else{m=s.match(/^(\d{1,2})\s+(?![-~～–—])/); if(m&&Number(m[1])<=31&&!/^\d{1,2}\s+\d{1,2}[.:]/.test(s)){curD=Number(m[1]);s=s.slice(m[0].length);}}
       // rest
-      m=s.match(/休\s*([一二兩三四半]|\d+(?:\.\d+)?)\s*(?:個半|小時|小|h)?/); if(m){const v=m[1]+(m[0].includes('個半')?'個半':'');e.rest=String(CN_NUM[v]!==undefined?CN_NUM[v]:Number(m[1]));s=s.replace(m[0],' ');}
-      if(/未休|沒休|无休/.test(s)){e.rest='X';s=s.replace(/未休|沒休|无休/,' ');}
+      if(/午?未休|午?沒休|午?无休|午?無休|未午休|沒午休/.test(s)){e.rest='X';s=s.replace(/午?未休|午?沒休|午?无休|午?無休|未午休|沒午休/,' ');}
+      if(!e.rest){m=s.match(/休\s*([一二兩三四半]|\d+(?:\.\d+)?)\s*(?:個半|小時|小|h)?/); if(m){const v=m[1]+(m[0].includes('個半')?'個半':'');e.rest=String(CN_NUM[v]!==undefined?CN_NUM[v]:Number(m[1]));s=s.replace(m[0],' ');}}
       if(/(^|\s)[xX](\s|$)/.test(s)){e.rest='X';s=s.replace(/(^|\s)[xX](\s|$)/,' ');}
       // piece: 79B / 79格 / 79件
       m=s.match(/(?:^|\s)(\d+(?:\.\d+)?)\s*(格|件|B)(?=\s|$)/i); if(m){e.mode='piece';e.qty=m[1];s=s.replace(m[0],' ');}
@@ -608,14 +608,21 @@ function parseImport(text, stmt){
       // extra: +1200寵物展
       m=s.match(/\+\s*(\d{3,5})\s*([^\s\d]+)?/); if(m){e.extra=m[1];e.extraNote=m[2]||'';s=s.replace(m[0],' ');}
       // standalone amount (4 digits) => flat
-      m=s.match(/(?:^|\s)([1-9]\d{3})(?=\s|$)/); if(m&&e.mode!=='piece'){e.mode='flat';e.flat=m[1];s=s.replace(m[0],' ');}
+      let amt=''; m=s.match(/(?:^|\s)([1-9]\d{3,4})(?=\s|$)/); if(m){amt=m[1];s=s.replace(m[0],' ');}
       // leftover stray tokens like "8."
       s=s.replace(/(^|\s)\d{1,2}\.(?=\s|$)/g,' ');
       e.place=s.replace(/\s+/g,' ').trim();
       // rules
-      if(e.mode==='hour'&&e.place&&isFlatPlace(e.place)&&!isOther(e.place)){e.mode='flat';e.flat='';}
       if(e.place&&isOther(e.place))e.tag='other';
+      if(e.mode==='hour'&&e.place&&isFlatPlace(e.place)&&e.tag!=='other'){e.mode='flat';e.flat=amt||'';amt='';}
       if(e.mode==='hour'&&e.start&&e.end&&!e.rest){ let d=(mins(e.end)-mins(e.start))/60; if(d<=0)d+=24; e.rest=(e.tag!=='other'&&d>=8)?'1':'X'; }
+      if(amt){
+        if(e.mode==='piece'){ if(String(compute(e).amountNum)!==amt)e.amountOv=amt; }
+        else if(e.tag==='other'||!(e.start&&e.end)){ e.mode='flat'; e.flat=amt; }
+        else { // company job with times + amount written: keep hours, only override if it differs
+          const c0=compute(e); if(String(c0.amountNum)!==amt)e.amountOv=amt;
+        }
+      }
       if(!e.start&&!e.qty&&e.mode==='hour'&&/^\S{1,6}\d{2,3}$/.test(e.place))skip='不是工作紀錄';
     }
     if(!curD)warn='沒有日期';
@@ -643,7 +650,7 @@ function renderImportPreview(){
 }
 $('btnImportText').addEventListener('click',()=>{
   const sel=$('impStmt'); sel.innerHTML='';
-  [shift(view,-1),view,shift(view,1)].forEach(ym=>{const o=document.createElement('option');const r=roc(ym);o.value=ym;o.textContent=r.y+'年'+r.m+'月';sel.appendChild(o);});
+  for(let k=3;k>=-12;k--){const ym=shift(view,k);const o=document.createElement('option');const r=roc(ym);o.value=ym;o.textContent=r.y+'年'+r.m+'月';sel.appendChild(o);}
   sel.value=view; $('impText').value=''; $('impPreview').innerHTML=''; $('impSave').disabled=true; $('impSave').textContent='匯入';
   openSheet('importSheet'); setTimeout(()=>$('impText').focus(),250);
 });
