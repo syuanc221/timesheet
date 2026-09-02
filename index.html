@@ -218,15 +218,15 @@ textarea.big:focus{outline:none;border-color:var(--ink);background:#fff}
     </div>
     <div class="row3" id="hourFields">
       <div class="field"><label>休息（小時）</label><input type="text" id="fRest" class="mono" inputmode="decimal" placeholder="X 或 1"></div>
-      <div class="field"><label>半夜時數</label><input type="text" id="fNight" class="mono" inputmode="decimal" placeholder="自動"></div>
-      <div class="field"><label>單價</label><input type="text" id="fRate" class="mono" inputmode="numeric"></div>
+      <div class="field"><label>白天時薪</label><input type="text" id="fRate" class="mono" inputmode="numeric" placeholder="自動"></div>
+      <div class="field"><label>半夜時薪</label><input type="text" id="fNightRate" class="mono" inputmode="numeric" placeholder="自動"></div>
     </div>
     <div class="field" id="flatFields" hidden><label>固定金額（走道班、拆櫃）</label><input type="text" id="fFlat" class="mono" inputmode="numeric" placeholder="1500"></div>
     <div class="row" id="pieceFields" hidden>
       <div class="field"><label>數量（格）</label><input type="text" id="fQty" class="mono" inputmode="decimal" placeholder="79"></div>
       <div class="field"><label>每格單價</label><input type="text" id="fPieceRate" class="mono" inputmode="numeric" placeholder="70"></div>
     </div>
-    <div class="hint" id="restHint">休息填數字會從總時數扣掉，填 X 代表沒休息。22:00 以後自動算半夜時薪；不到 4 小時以 4 小時計。時間留空＝先記地點，之後再補。</div>
+    <div class="hint" id="restHint">休息填數字會從總時數扣掉，填 X 代表沒休息。時薪留空會自動帶設定裡的（公司或該雇主）；半夜時段的時數會自動算，不用自己填。時間留空＝先記地點，之後再補。</div>
 
     <div class="calc">
       <div><div class="k">總時數</div><div class="v num" id="cHours">—</div></div>
@@ -241,7 +241,10 @@ textarea.big:focus{outline:none;border-color:var(--ink);background:#fff}
         <div class="field"><label>加給說明</label><input type="text" id="fExtraNote" placeholder="寵物展"></div>
       </div>
       <div class="row">
+        <div class="field"><label>半夜時數（手動覆蓋）</label><input type="text" id="fNight" class="mono" inputmode="decimal" placeholder="留空＝自動"></div>
         <div class="field"><label>總時數（手動覆蓋）</label><input type="text" id="fHoursOv" placeholder="留空＝自動"></div>
+      </div>
+      <div class="row">
         <div class="field"><label>申請金額（手動覆蓋）</label><input type="text" id="fAmountOv" placeholder="留空＝自動"></div>
       </div>
       <div class="field"><label>併入哪個月結算</label><select id="fStmt"></select></div>
@@ -306,7 +309,7 @@ function isoToday(){return today.getFullYear()+'-'+pad(today.getMonth()+1)+'-'+p
 function latestStmt(){return state.entries.map(e=>e.stmt).sort().pop();}
 function defaults(){return {settings:{name:'子良',dayRate:260,nightRate:310,flatRate:1500,pieceRate:70,minHours:4,payDay:10,otherKeys:'凱哥,傑哥,爸,偉謙,璦美,路寬,星光',nightFrom:22,nightTo:6,otherRates:'星光=300/350@22-7'},entries:[],sample:false};}
 function load(){
-  try{const raw=localStorage.getItem(KEY); if(raw){const s=JSON.parse(raw); const st=Object.assign(defaults().settings,s.settings||{}); if(st.otherRates==='星光=300/350')st.otherRates='星光=300/350@22-7'; return Object.assign(defaults(),s,{settings:st});}}catch(e){}
+  try{const raw=localStorage.getItem(KEY); if(raw){const s=JSON.parse(raw); const st=Object.assign(defaults().settings,s.settings||{}); if(st.otherRates==='星光=300/350')st.otherRates='星光=300/350@22-7'; (s.entries||[]).forEach(e=>{if(Number(e.night)>24){e.nightRate=e.night;e.night='';} if(e.tag==='other'&&e.rate&&Number(e.rate)===st.dayRate)e.rate='';}); return Object.assign(defaults(),s,{settings:st});}}catch(e){}
   const s=defaults(); s.sample=true; s.entries=sampleEntries(); return s;
 }
 function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}
@@ -343,7 +346,7 @@ function otherRateFor(place){
 function compute(e){
   const S=state.settings;
   const rule=e.tag==='other'?otherRateFor(e.place||''):null;
-  const dayRate=Number(e.rate)||(rule?rule.day:S.dayRate), nightRate=rule?rule.night:S.nightRate;
+  const dayRate=Number(e.rate)||(rule?rule.day:S.dayRate), nightRate=Number(e.nightRate)||(rule?rule.night:S.nightRate);
   const hasTime=!!(e.start&&e.end);
   let dur=0; if(hasTime){dur=(mins(e.end)-mins(e.start))/60; if(dur<=0)dur+=24;}
   const restN=/^\d+(\.\d+)?$/.test(String(e.rest).trim())?Number(e.rest):0;
@@ -447,9 +450,9 @@ function openForm(e){
   $('formTitle').textContent=e?'編輯':'新增一筆';
   $('formDelete').hidden=!e;
   const S=state.settings;
-  const v=e||{date:isoToday(),place:'',start:'08:00',end:'17:00',rest:'',night:'',rate:'',flat:'',qty:'',pieceRate:'',overtime:'',extra:'',extraNote:'',hoursOv:'',amountOv:'',mode:'hour',tag:'',stmt:ymOf(isoToday())};
+  const v=e||{date:isoToday(),place:'',start:'08:00',end:'17:00',rest:'',night:'',rate:'',nightRate:'',flat:'',qty:'',pieceRate:'',overtime:'',extra:'',extraNote:'',hoursOv:'',amountOv:'',mode:'hour',tag:'',stmt:ymOf(isoToday())};
   $('fDate').value=v.date;$('fPlace').value=v.place;$('fStart').value=v.start;$('fEnd').value=v.end;
-  $('fRest').value=v.rest;$('fNight').value=v.night||'';$('fRate').value=v.rate||S.dayRate;$('fFlat').value=v.flat||S.flatRate;$('fQty').value=v.qty||'';$('fPieceRate').value=v.pieceRate||S.pieceRate;
+  $('fRest').value=v.rest;$('fNight').value=v.night||'';$('fRate').value=v.rate||'';$('fNightRate').value=v.nightRate||'';$('fFlat').value=v.flat||S.flatRate;$('fQty').value=v.qty||'';$('fPieceRate').value=v.pieceRate||S.pieceRate;
   $('fOvertime').value=v.overtime;$('fExtra').value=v.extra;$('fExtraNote').value=v.extraNote;$('fHoursOv').value=v.hoursOv;$('fAmountOv').value=v.amountOv;
   fillStmtOptions(v.date); $('fStmt').value=v.stmt;
   if(!$('fStmt').value){const o=document.createElement('option');o.value=v.stmt;o.textContent=v.stmt;$('fStmt').appendChild(o);$('fStmt').value=v.stmt;}
@@ -459,16 +462,16 @@ function openForm(e){
 }
 function readForm(){
   return {id:editing?editing.id:uid(),date:$('fDate').value,place:$('fPlace').value.trim(),start:$('fStart').value,end:$('fEnd').value,
-    rest:$('fRest').value.trim(),night:$('fNight').value.trim(),rate:$('fRate').value.trim(),flat:$('fFlat').value.trim(),qty:$('fQty').value.trim(),pieceRate:$('fPieceRate').value.trim(),
+    rest:$('fRest').value.trim(),night:$('fNight').value.trim(),rate:$('fRate').value.trim(),nightRate:$('fNightRate').value.trim(),flat:$('fFlat').value.trim(),qty:$('fQty').value.trim(),pieceRate:$('fPieceRate').value.trim(),
     overtime:$('fOvertime').value.trim(),extra:$('fExtra').value.trim(),extraNote:$('fExtraNote').value.trim(),
     hoursOv:$('fHoursOv').value.trim(),amountOv:$('fAmountOv').value.trim(),mode,tag,stmt:$('fStmt').value};
 }
 function preview(){
   const e=readForm(); const c=compute(e);
-  $('cHours').innerHTML=(c.hoursText||'—')+(e.mode==='hour'?'<small>小時</small>':e.mode==='piece'?'':'<small>固定</small>');
+  $('cHours').innerHTML=(c.hoursText||'—')+(e.mode==='hour'&&!/半夜/.test(c.hoursText)?'<small>小時</small>':e.mode==='flat'?'<small>固定</small>':'');
   $('cAmount').innerHTML=(c.amountText?esc(c.amountText):'待補')+'<small>單價 '+esc(c.rateText)+'</small>';
 }
-['fStart','fEnd','fRest','fNight','fRate','fFlat','fQty','fPieceRate','fExtra','fExtraNote','fHoursOv','fAmountOv'].forEach(id=>$(id).addEventListener('input',preview));
+['fStart','fEnd','fRest','fNight','fRate','fNightRate','fFlat','fQty','fPieceRate','fExtra','fExtraNote','fHoursOv','fAmountOv'].forEach(id=>$(id).addEventListener('input',preview));
 $('fDate').addEventListener('change',()=>{const keep=$('fStmt').value;const base=ymOf($('fDate').value);fillStmtOptions($('fDate').value);$('fStmt').value=(base===keep||shift(base,1)===keep)?keep:base;});
 $('formCancel').addEventListener('click',closeSheets);
 $('formSave').addEventListener('click',()=>{
@@ -551,8 +554,8 @@ function parseImport(text, stmt){
       e.place=s.replace(/\s+/g,' ').trim();
       // rules
       if(e.mode==='hour'&&e.place&&isFlatPlace(e.place)&&!isOther(e.place)){e.mode='flat';e.flat='';}
-      if(e.mode==='hour'&&e.start&&e.end&&!e.rest){ let d=(mins(e.end)-mins(e.start))/60; if(d<=0)d+=24; e.rest=d>=8?'1':'X'; }
       if(e.place&&isOther(e.place))e.tag='other';
+      if(e.mode==='hour'&&e.start&&e.end&&!e.rest){ let d=(mins(e.end)-mins(e.start))/60; if(d<=0)d+=24; e.rest=(e.tag!=='other'&&d>=8)?'1':'X'; }
       if(!e.start&&!e.qty&&e.mode==='hour'&&/^\S{1,6}\d{2,3}$/.test(e.place))skip='不是工作紀錄';
     }
     if(!curD)warn='沒有日期';
