@@ -128,6 +128,12 @@ textarea.big:focus{outline:none;border-color:var(--ink);background:#fff}
 .chip{background:#fff;color:var(--ink);padding:1px 8px;border-radius:999px;font-size:11px;font-weight:500}
 .chip.warn{background:var(--accent);color:#1A1000}
 .linkbtn{color:var(--ink);font-weight:500;text-decoration:underline;text-underline-offset:3px;font-size:13px}
+.toast{position:fixed;left:50%;bottom:calc(88px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--black);color:#fff;padding:12px 16px;border-radius:999px;font-size:14px;display:flex;gap:14px;align-items:center;z-index:40;box-shadow:0 8px 24px rgba(0,0,0,.2);white-space:nowrap}
+.toast button{color:#FFB35C;font-weight:700}
+.trash{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.trash .trow{display:flex;justify-content:space-between;align-items:center;background:var(--tile);border-radius:12px;padding:10px 12px;font-size:13px;gap:10px}
+.trash .trow span{color:var(--muted);font-size:11px;display:block}
+.trash .trow button{font-weight:700;white-space:nowrap}
 /* ---------- report ---------- */
 #report{display:none;position:fixed;inset:0;z-index:30;background:var(--tile);overflow:auto}
 #report.open{display:block}
@@ -269,6 +275,9 @@ textarea.big:focus{outline:none;border-color:var(--ink);background:#fff}
     <button class="btn" id="btnImport">還原（貼上）</button>
   </div>
   <p class="note"><b>資料存在這支手機的瀏覽器裡</b>，不會上傳。用 Safari 開這個網址 → 分享 → 加入主畫面，之後固定從主畫面的圖示開，資料才會在同一個地方。換手機前先按「備份」，把那段文字貼到 LINE 記事本存著。</p>
+  <h3 class="hint" style="margin:8px 0 6px">最近刪除（30 天內可復原）</h3>
+  <div class="trash" id="trashList"></div>
+  <button class="btn" id="btnRestoreWipe" hidden style="width:100%;height:46px;font-size:14px;margin-bottom:10px">還原「清除全部」之前的資料</button>
   <button class="danger" id="btnWipe">清除全部資料</button>
 </div>
 
@@ -296,7 +305,7 @@ textarea.big:focus{outline:none;border-color:var(--ink);background:#fff}
 <script>
 (function(){
 const KEY='zilang-timesheet-v1';
-const APP_VERSION=7;
+const APP_VERSION=8;
 const $=id=>document.getElementById(id);
 const pad=n=>String(n).padStart(2,'0');
 const today=new Date();
@@ -382,7 +391,7 @@ function compute(e){
 const roc=ym=>{const [y,m]=ym.split('-').map(Number);return {y:y-1911,m};};
 function shift(ym,d){const [y,m]=ym.split('-').map(Number);const dt=new Date(y,m-1+d,1);return dt.getFullYear()+'-'+pad(dt.getMonth()+1);}
 function lastDay(ym){const [y,m]=ym.split('-').map(Number);return new Date(y,m,0).getDate();}
-function monthEntries(ym){return state.entries.filter(e=>e.stmt===ym).sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start));}
+function monthEntries(ym){return state.entries.filter(e=>e.stmt===ym&&!e.deleted).sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start));}
 function daysUntil(y,m,d){const t=new Date(today.getFullYear(),today.getMonth(),today.getDate());return Math.round((new Date(y,m-1,d)-t)/86400000);}
 
 function render(){
@@ -483,21 +492,47 @@ $('formSave').addEventListener('click',()=>{
   if(i>=0)state.entries[i]=e; else state.entries.push(e);
   save(); view=e.stmt; closeSheets(); render();
 });
+let toastTimer=null;
+function toast(msg,actionLabel,action){
+  document.querySelectorAll('.toast').forEach(t=>t.remove()); clearTimeout(toastTimer);
+  const t=document.createElement('div'); t.className='toast'; t.innerHTML='<span>'+esc(msg)+'</span>'+(actionLabel?'<button type="button">'+esc(actionLabel)+'</button>':'');
+  if(actionLabel)t.querySelector('button').addEventListener('click',()=>{action();t.remove();});
+  document.body.appendChild(t); toastTimer=setTimeout(()=>t.remove(),6000);
+}
+function purgeTrash(){const cut=Date.now()-30*86400000; state.entries=state.entries.filter(e=>!e.deleted||e.deleted>cut);}
 $('formDelete').addEventListener('click',()=>{
-  if(!editing)return; state.entries=state.entries.filter(x=>x.id!==editing.id); if(state.sample)state.sample=false; save(); closeSheets(); render();
+  if(!editing)return; const id=editing.id; const e=state.entries.find(x=>x.id===id); if(!e)return;
+  if(state.sample){state.sample=false;state.entries=[];save();closeSheets();render();return;}
+  e.deleted=Date.now(); save(); closeSheets(); render();
+  toast('已刪除「'+e.place+'」','復原',()=>{delete e.deleted;save();render();});
 });
 $('btnAdd').addEventListener('click',()=>openForm(null));
 $('prevM').addEventListener('click',()=>{view=shift(view,-1);render();});
 $('nextM').addEventListener('click',()=>{view=shift(view,1);render();});
-$('clearSample').addEventListener('click',()=>{state.sample=false;state.entries=[];save();view=ymOf(isoToday());render();});
+$('clearSample').addEventListener('click',()=>{const b=$('clearSample'); if(b.dataset.arm!=='1'){b.dataset.arm='1';b.textContent='再按一次確認清除範例';setTimeout(()=>{b.dataset.arm='';b.textContent='清除，開始記錄';},4000);return;} state.sample=false;state.entries=[];save();view=ymOf(isoToday());render();});
 
 /* settings */
-$('btnSettings').addEventListener('click',()=>{const S=state.settings;$('sName').value=S.name;$('sDay').value=S.dayRate;$('sNight').value=S.nightRate;$('sFlat').value=S.flatRate;$('sPiece').value=S.pieceRate;$('sMin').value=S.minHours;$('sPay').value=S.payDay;$('sOther').value=S.otherKeys||'';$('sOtherRates').value=S.otherRates||'';$('sNF').value=S.nightFrom??22;$('sNT').value=S.nightTo??6;openSheet('settingsSheet');});
+$('btnSettings').addEventListener('click',()=>{const S=state.settings;$('sName').value=S.name;$('sDay').value=S.dayRate;$('sNight').value=S.nightRate;$('sFlat').value=S.flatRate;$('sPiece').value=S.pieceRate;$('sMin').value=S.minHours;$('sPay').value=S.payDay;$('sOther').value=S.otherKeys||'';$('sOtherRates').value=S.otherRates||'';$('sNF').value=S.nightFrom??22;$('sNT').value=S.nightTo??6;renderTrash();openSheet('settingsSheet');});
 $('setCancel').addEventListener('click',closeSheets);
 $('setSave').addEventListener('click',()=>{state.settings={name:$('sName').value.trim()||'工時',dayRate:Number($('sDay').value)||260,nightRate:Number($('sNight').value)||310,flatRate:Number($('sFlat').value)||1500,pieceRate:Number($('sPiece').value)||70,minHours:Number($('sMin').value)||0,payDay:Number($('sPay').value)||10,otherKeys:$('sOther').value.trim(),otherRates:$('sOtherRates').value.trim(),nightFrom:Number($('sNF').value)||22,nightTo:Number($('sNT').value)||6};save();closeSheets();render();});
 $('btnExport').addEventListener('click',async()=>{const txt=JSON.stringify(state);try{await navigator.clipboard.writeText(txt);$('btnExport').textContent='已複製';}catch(e){window.prompt('全選複製這段文字：',txt);}setTimeout(()=>$('btnExport').textContent='備份（複製）',2500);});
 $('btnImport').addEventListener('click',()=>{const txt=window.prompt('貼上之前備份的內容：');if(!txt)return;try{const s=JSON.parse(txt);if(!Array.isArray(s.entries))throw 0;state=Object.assign(defaults(),s);state.sample=false;save();view=latestStmt()||view;closeSheets();render();}catch(e){alert('這段內容不是有效的備份。');}});
-$('btnWipe').addEventListener('click',()=>{if(!confirm('確定清除全部紀錄？建議先備份。'))return;state=defaults();save();view=ymOf(isoToday());closeSheets();render();});
+$('btnWipe').addEventListener('click',()=>{
+  if(!confirm('確定清除全部紀錄？'))return;
+  if(!confirm('再確認一次：這會清掉所有月份的紀錄。清除前會自動留一份備份，可以在設定裡還原。'))return;
+  try{localStorage.setItem(KEY+'-wipe-backup',JSON.stringify({at:Date.now(),state}));}catch(e){}
+  state=defaults();save();view=ymOf(isoToday());closeSheets();render();
+});
+$('btnRestoreWipe').addEventListener('click',()=>{try{const b=JSON.parse(localStorage.getItem(KEY+'-wipe-backup'));if(!b||!b.state)return;state=b.state;save();view=latestStmt()||view;closeSheets();render();toast('已還原清除前的資料');}catch(e){}});
+function renderTrash(){
+  purgeTrash();
+  const box=$('trashList'); box.innerHTML='';
+  const del=state.entries.filter(e=>e.deleted).sort((a,b)=>b.deleted-a.deleted);
+  if(!del.length){box.innerHTML='<div class="trow"><span>沒有刪除的紀錄</span></div>';}
+  del.forEach(e=>{const d=document.createElement('div');d.className='trow';const c=compute(e);d.innerHTML=`<div>${esc(e.place)}<span>${e.date.slice(5).replace('-','/')} · ${c.amountText||'—'} · 刪於 ${new Date(e.deleted).toLocaleDateString('zh-TW')}</span></div><button type="button">復原</button>`;d.querySelector('button').addEventListener('click',()=>{delete e.deleted;save();render();renderTrash();});box.appendChild(d);});
+  let hasWipe=false; try{hasWipe=!!localStorage.getItem(KEY+'-wipe-backup');}catch(e){}
+  $('btnRestoreWipe').hidden=!hasWipe;
+}
 
 /* ---------- import from notes ---------- */
 const CN_NUM={'一':1,'二':2,'兩':2,'三':3,'四':4,'半':0.5,'一個半':1.5,'1':1,'2':2,'3':3,'0.5':0.5,'1.5':1.5};
