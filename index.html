@@ -130,6 +130,8 @@ textarea.big:focus{outline:none;border-color:var(--ink);background:#fff}
 .chip{background:#fff;color:var(--ink);padding:1px 8px;border-radius:999px;font-size:11px;font-weight:500}
 .chip.warn{background:var(--accent);color:#1A1000}
 .linkbtn{color:var(--ink);font-weight:500;text-decoration:underline;text-underline-offset:3px;font-size:13px}
+.ptr{position:fixed;top:calc(10px + env(safe-area-inset-top));left:50%;transform:translate(-50%,-60px);background:var(--black);color:#fff;font-size:12px;padding:8px 14px;border-radius:999px;z-index:45;transition:transform .15s ease,opacity .15s;opacity:0;pointer-events:none;white-space:nowrap}
+.ptr.show{opacity:1}
 .toast{position:fixed;left:50%;bottom:calc(88px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--black);color:#fff;padding:12px 16px;border-radius:999px;font-size:14px;display:flex;gap:14px;align-items:center;z-index:40;box-shadow:0 8px 24px rgba(0,0,0,.2);white-space:nowrap}
 .toast button{color:#FFB35C;font-weight:700}
 .trash{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
@@ -281,6 +283,8 @@ textarea.big:focus{outline:none;border-color:var(--ink);background:#fff}
     <button class="btn" id="btnImport">還原（貼上文字）</button>
   </div>
   <p class="hint" id="backupInfo"></p>
+  <div class="settings-actions"><button class="btn" id="btnCheckUpdate">檢查更新</button><button class="btn" id="btnReload">重新整理</button></div>
+  <p class="hint" id="verInfo"></p>
   <input type="file" id="fileRestore" accept=".json,application/json" hidden>
   <p class="note"><b>資料存在這支手機的瀏覽器裡</b>，不會上傳。用 Safari 開這個網址 → 分享 → 加入主畫面，之後固定從主畫面的圖示開，資料才會在同一個地方。換手機前先按「備份」，把那段文字貼到 LINE 記事本存著。</p>
   <h3 class="hint" style="margin:8px 0 6px">最近刪除（30 天內可復原）</h3>
@@ -313,7 +317,7 @@ textarea.big:focus{outline:none;border-color:var(--ink);background:#fff}
 <script>
 (function(){
 const KEY='zilang-timesheet-v1';
-const APP_VERSION=10;
+const APP_VERSION=11;
 const $=id=>document.getElementById(id);
 const pad=n=>String(n).padStart(2,'0');
 const today=new Date();
@@ -703,15 +707,36 @@ $('btnExportFile').addEventListener('click',backupToFile);
 $('btnBackupNow').addEventListener('click',backupToFile);
 $('btnImportFile').addEventListener('click',()=>$('fileRestore').click());
 $('fileRestore').addEventListener('change',ev=>{const f=ev.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=()=>{try{const s=JSON.parse(r.result); if(!Array.isArray(s.entries))throw 0; if(!confirm('要用這個備份（'+s.entries.length+' 筆）取代目前的資料嗎？'))return; state=Object.assign(defaults(),s,{settings:Object.assign(defaults().settings,s.settings||{})}); state.sample=false; save(); view=latestStmt()||view; closeSheets(); render(); toast('已從檔案還原');}catch(e){alert('這個檔案不是有效的備份。');} ev.target.value='';}; r.readAsText(f);});
-/* ---------- update check ---------- */
-fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.json()).then(v=>{
-  if(v&&Number(v.version)>APP_VERSION){
-    const bar=document.createElement('div');bar.className='samplebar';bar.style.marginTop='10px';
-    bar.innerHTML='<span>有新版本（v'+v.version+'）</span><button id="btnUpdate">立即更新</button>';
-    document.querySelector('.monthnav').insertAdjacentElement('afterend',bar);
-    document.getElementById('btnUpdate').addEventListener('click',()=>{location.replace(location.pathname+'?v='+v.version+'&t='+Date.now());});
-  }
-}).catch(()=>{});
+/* ---------- update check + pull to refresh ---------- */
+function showUpdateBar(v){
+  if($('updatebar'))return;
+  const bar=document.createElement('div');bar.id='updatebar';bar.className='samplebar';bar.style.marginTop='10px';
+  bar.innerHTML='<span>有新版本（v'+v+'）</span><button id="btnUpdate">立即更新</button>';
+  document.querySelector('.monthnav').insertAdjacentElement('afterend',bar);
+  $('btnUpdate').addEventListener('click',()=>hardReload(v));
+}
+function hardReload(v){location.replace(location.pathname+'?v='+(v||APP_VERSION)+'&t='+Date.now());}
+async function checkUpdate(manual){
+  try{
+    const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'}); const v=await r.json();
+    if(v&&Number(v.version)>APP_VERSION){ showUpdateBar(v.version); if(manual)toast('有新版本 v'+v.version,'立即更新',()=>hardReload(v.version)); return true; }
+    if(manual)toast('已是最新版 v'+APP_VERSION);
+  }catch(e){ if(manual)toast('連不上伺服器，稍後再試'); }
+  return false;
+}
+$('verInfo').textContent='目前版本 v'+APP_VERSION;
+$('btnCheckUpdate').addEventListener('click',()=>checkUpdate(true));
+$('btnReload').addEventListener('click',()=>hardReload());
+checkUpdate(false);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')checkUpdate(false);});
+// pull to refresh (only when page is at the top and no sheet is open)
+(function(){
+  const ind=document.createElement('div');ind.className='ptr';ind.textContent='下拉重新整理';document.body.appendChild(ind);
+  let y0=null,pulling=false,dy=0;
+  document.addEventListener('touchstart',ev=>{ if(window.scrollY>0||document.querySelector('.sheet.open')||$('report').classList.contains('open')){y0=null;return;} y0=ev.touches[0].clientY;dy=0;pulling=false; },{passive:true});
+  document.addEventListener('touchmove',ev=>{ if(y0==null)return; dy=ev.touches[0].clientY-y0; if(dy>10){pulling=true;const t=Math.min(dy,110);ind.style.transform='translate(-50%,'+(t-60)+'px)';ind.classList.add('show');ind.textContent=dy>90?'放開就重新整理':'下拉重新整理';} },{passive:true});
+  document.addEventListener('touchend',async()=>{ if(!pulling){y0=null;return;} const go=dy>90; y0=null;pulling=false; if(go){ind.textContent='檢查更新中…'; const has=await checkUpdate(false); if(has){ind.textContent='有新版本，正在更新';setTimeout(()=>hardReload(),300);} else {ind.textContent='已是最新版';setTimeout(()=>{ind.classList.remove('show');ind.style.transform='';},900);} } else {ind.classList.remove('show');ind.style.transform='';} });
+})();
 })();
 </script>
 </body></html>
