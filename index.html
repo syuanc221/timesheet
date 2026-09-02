@@ -79,8 +79,10 @@ button{cursor:pointer;background:none;border:0;padding:0}
 /* ---------- sheets ---------- */
 .scrim{position:fixed;inset:0;background:rgba(17,18,20,.4);display:none;z-index:20}
 .scrim.open{display:block}
-.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;max-width:520px;margin:0 auto;background:#fff;border-radius:24px 24px 0 0;max-height:92dvh;overflow:auto;transform:translateY(105%);transition:transform .25s ease;padding:0 20px calc(20px + env(safe-area-inset-bottom))}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;max-width:520px;margin:0 auto;background:#fff;border-radius:24px 24px 0 0;max-height:92dvh;overflow:auto;transform:translateY(105%);transition:transform .25s ease,max-height .25s ease,border-radius .25s ease;padding:0 20px calc(20px + env(safe-area-inset-bottom))}
 .sheet.open{transform:none}
+.sheet.full{max-height:100dvh;height:100dvh;border-radius:0;padding-top:env(safe-area-inset-top)}
+.sheet header{touch-action:none}
 @media (prefers-reduced-motion:reduce){.sheet{transition:none}}
 .sheet header{position:sticky;top:0;background:#fff;display:flex;align-items:center;justify-content:space-between;padding:18px 0 12px;margin-bottom:12px;z-index:1}
 .sheet header::before{content:"";position:absolute;top:8px;left:50%;width:36px;height:4px;border-radius:2px;background:var(--line);transform:translateX(-50%)}
@@ -305,7 +307,7 @@ textarea.big:focus{outline:none;border-color:var(--ink);background:#fff}
 <script>
 (function(){
 const KEY='zilang-timesheet-v1';
-const APP_VERSION=8;
+const APP_VERSION=9;
 const $=id=>document.getElementById(id);
 const pad=n=>String(n).padStart(2,'0');
 const today=new Date();
@@ -440,7 +442,15 @@ function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','
 
 /* ---------- sheets ---------- */
 function openSheet(id){$('scrim').classList.add('open');$(id).classList.add('open');}
-function closeSheets(){$('scrim').classList.remove('open');document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('open'));}
+function closeSheets(){$('scrim').classList.remove('open');document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('open','full'));}
+/* drag the handle: up = full screen, down = shrink / close */
+document.querySelectorAll('.sheet header').forEach(h=>{
+  let y0=null;
+  h.addEventListener('touchstart',ev=>{if(ev.target.tagName==='BUTTON')return;y0=ev.touches[0].clientY;},{passive:true});
+  h.addEventListener('touchend',ev=>{if(y0==null)return;const dy=ev.changedTouches[0].clientY-y0;y0=null;const sh=h.closest('.sheet');
+    if(dy<-40)sh.classList.add('full'); else if(dy>40){ if(sh.classList.contains('full'))sh.classList.remove('full'); else closeSheets(); }});
+  h.addEventListener('dblclick',()=>h.closest('.sheet').classList.toggle('full'));
+});
 $('scrim').addEventListener('click',closeSheets);
 
 function setMode(m){mode=m;['hour','flat','piece'].forEach(k=>$('mode'+k[0].toUpperCase()+k.slice(1)).classList.toggle('on',m===k));$('hourFields').hidden=m!=='hour';$('restHint').hidden=m!=='hour';$('flatFields').hidden=m!=='flat';$('pieceFields').hidden=m!=='piece';preview();}
