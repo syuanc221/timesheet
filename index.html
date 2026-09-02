@@ -258,7 +258,8 @@ textarea.big:focus{outline:none;border-color:var(--ink);background:#fff}
   <div class="row"><div class="field"><label>白天時薪</label><input type="text" id="sDay" class="mono" inputmode="numeric"></div><div class="field"><label>半夜時薪</label><input type="text" id="sNight" class="mono" inputmode="numeric"></div></div>
   <div class="row"><div class="field"><label>走道班固定金額</label><input type="text" id="sFlat" class="mono" inputmode="numeric"></div><div class="field"><label>計件每格單價</label><input type="text" id="sPiece" class="mono" inputmode="numeric"></div></div>
   <div class="row"><div class="field"><label>最低計時（小時）</label><input type="text" id="sMin" class="mono" inputmode="decimal"></div><div class="field"><label>發薪日（每月幾號）</label><input type="text" id="sPay" class="mono" inputmode="numeric"></div></div>
-  <div class="field"><label>其他雇主的關鍵字（開頭是這些字的，不列入公司月結表）</label><input type="text" id="sOther" placeholder="凱哥,傑哥,爸,偉謙,璦美,路寬"></div>
+  <div class="field"><label>其他雇主的關鍵字（開頭是這些字的，不列入公司月結表）</label><input type="text" id="sOther" placeholder="凱哥,傑哥,爸,偉謙,璦美,路寬,星光"></div>
+  <div class="field"><label>其他雇主的時薪（名字=白天/半夜，逗號分隔；沒列的會標待補）</label><input type="text" id="sOtherRates" placeholder="星光=300/350"></div>
   <div class="settings-actions">
     <button class="btn" id="btnExport">備份（複製）</button>
     <button class="btn" id="btnImport">還原（貼上）</button>
@@ -302,7 +303,7 @@ let editing=null, mode='hour', tag='';
 
 function isoToday(){return today.getFullYear()+'-'+pad(today.getMonth()+1)+'-'+pad(today.getDate());}
 function latestStmt(){return state.entries.map(e=>e.stmt).sort().pop();}
-function defaults(){return {settings:{name:'子良',dayRate:260,nightRate:310,flatRate:1500,pieceRate:70,minHours:4,payDay:10,otherKeys:'凱哥,傑哥,爸,偉謙,璦美,路寬'},entries:[],sample:false};}
+function defaults(){return {settings:{name:'子良',dayRate:260,nightRate:310,flatRate:1500,pieceRate:70,minHours:4,payDay:10,otherKeys:'凱哥,傑哥,爸,偉謙,璦美,路寬,星光',otherRates:'星光=300/350'},entries:[],sample:false};}
 function load(){
   try{const raw=localStorage.getItem(KEY); if(raw){const s=JSON.parse(raw); return Object.assign(defaults(),s,{settings:Object.assign(defaults().settings,s.settings||{})});}}catch(e){}
   const s=defaults(); s.sample=true; s.entries=sampleEntries(); return s;
@@ -333,9 +334,15 @@ function nightOverlap(startMin,endMin){
   // minutes falling in 22:00–06:00, over a range that may cross midnight
   let n=0; for(let t=startMin;t<endMin;t+=15){const h=(t%1440)/60; if(h>=22||h<6)n+=15;} return n/60;
 }
+function otherRateFor(place){
+  const rules=String(state.settings.otherRates||'').split(/[,，\n]+/).map(x=>x.trim()).filter(Boolean);
+  for(const r of rules){const m=r.match(/^(.+?)\s*[=＝:：]\s*(\d+)\s*(?:[\/／]\s*(\d+))?$/); if(m&&place.includes(m[1].trim()))return {day:Number(m[2]),night:Number(m[3]||m[2])};}
+  return null;
+}
 function compute(e){
   const S=state.settings;
-  const dayRate=Number(e.rate)||S.dayRate, nightRate=S.nightRate;
+  const rule=e.tag==='other'?otherRateFor(e.place||''):null;
+  const dayRate=Number(e.rate)||(rule?rule.day:S.dayRate), nightRate=rule?rule.night:S.nightRate;
   const hasTime=!!(e.start&&e.end);
   let dur=0; if(hasTime){dur=(mins(e.end)-mins(e.start))/60; if(dur<=0)dur+=24;}
   const restN=/^\d+(\.\d+)?$/.test(String(e.rest).trim())?Number(e.rest):0;
@@ -355,7 +362,7 @@ function compute(e){
     if(night>0){ hoursText=(day>0?fmt(day)+'+':'')+'半夜'+fmt(night)+'小'; rateText=dayRate+'/'+nightRate; amount=day*dayRate+night*nightRate; }
     else{ hoursText=fmt(total); rateText=String(dayRate); amount=total*dayRate; }
   }else{ rateText=String(dayRate); }
-  if(e.tag==='other'&&e.mode==='hour')amount=null; // 其他雇主的時薪不一定相同，金額由他自己填
+  if(e.tag==='other'&&e.mode==='hour'&&!rule&&!e.rate)amount=null; // 其他雇主沒設定時薪就先待補
   let amountText=amount==null?'':String(Math.round(amount));
   const extra=Number(e.extra)||0;
   if(extra>0)amountText=(amountText||'0')+'+'+extra+(e.extraNote||'');
@@ -479,9 +486,9 @@ $('nextM').addEventListener('click',()=>{view=shift(view,1);render();});
 $('clearSample').addEventListener('click',()=>{state.sample=false;state.entries=[];save();view=ymOf(isoToday());render();});
 
 /* settings */
-$('btnSettings').addEventListener('click',()=>{const S=state.settings;$('sName').value=S.name;$('sDay').value=S.dayRate;$('sNight').value=S.nightRate;$('sFlat').value=S.flatRate;$('sPiece').value=S.pieceRate;$('sMin').value=S.minHours;$('sPay').value=S.payDay;$('sOther').value=S.otherKeys||'';openSheet('settingsSheet');});
+$('btnSettings').addEventListener('click',()=>{const S=state.settings;$('sName').value=S.name;$('sDay').value=S.dayRate;$('sNight').value=S.nightRate;$('sFlat').value=S.flatRate;$('sPiece').value=S.pieceRate;$('sMin').value=S.minHours;$('sPay').value=S.payDay;$('sOther').value=S.otherKeys||'';$('sOtherRates').value=S.otherRates||'';openSheet('settingsSheet');});
 $('setCancel').addEventListener('click',closeSheets);
-$('setSave').addEventListener('click',()=>{state.settings={name:$('sName').value.trim()||'工時',dayRate:Number($('sDay').value)||260,nightRate:Number($('sNight').value)||310,flatRate:Number($('sFlat').value)||1500,pieceRate:Number($('sPiece').value)||70,minHours:Number($('sMin').value)||0,payDay:Number($('sPay').value)||10,otherKeys:$('sOther').value.trim()};save();closeSheets();render();});
+$('setSave').addEventListener('click',()=>{state.settings={name:$('sName').value.trim()||'工時',dayRate:Number($('sDay').value)||260,nightRate:Number($('sNight').value)||310,flatRate:Number($('sFlat').value)||1500,pieceRate:Number($('sPiece').value)||70,minHours:Number($('sMin').value)||0,payDay:Number($('sPay').value)||10,otherKeys:$('sOther').value.trim(),otherRates:$('sOtherRates').value.trim()};save();closeSheets();render();});
 $('btnExport').addEventListener('click',async()=>{const txt=JSON.stringify(state);try{await navigator.clipboard.writeText(txt);$('btnExport').textContent='已複製';}catch(e){window.prompt('全選複製這段文字：',txt);}setTimeout(()=>$('btnExport').textContent='備份（複製）',2500);});
 $('btnImport').addEventListener('click',()=>{const txt=window.prompt('貼上之前備份的內容：');if(!txt)return;try{const s=JSON.parse(txt);if(!Array.isArray(s.entries))throw 0;state=Object.assign(defaults(),s);state.sample=false;save();view=latestStmt()||view;closeSheets();render();}catch(e){alert('這段內容不是有效的備份。');}});
 $('btnWipe').addEventListener('click',()=>{if(!confirm('確定清除全部紀錄？建議先備份。'))return;state=defaults();save();view=ymOf(isoToday());closeSheets();render();});
