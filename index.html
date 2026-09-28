@@ -136,6 +136,21 @@ textarea.big:focus{outline:none;border-color:var(--ink);background:#fff}
 .ptr.show{opacity:1}
 .toast{position:fixed;left:50%;bottom:calc(88px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--black);color:#fff;padding:12px 16px;border-radius:999px;font-size:14px;display:flex;gap:14px;align-items:center;z-index:40;box-shadow:0 8px 24px rgba(0,0,0,.2);white-space:nowrap}
 .toast button{color:#FFB35C;font-weight:700}
+.photos{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 14px}
+.photos .ph{width:72px;height:72px;border-radius:12px;overflow:hidden;background:var(--tile);position:relative;padding:0}
+.photos .ph img{width:100%;height:100%;object-fit:cover;display:block}
+.photos .add{width:72px;height:72px;border-radius:12px;border:1.5px dashed var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--muted);font-size:11px;font-family:var(--sans)}
+.photos .add svg{width:22px;height:22px}
+.entry .meta .chip.ph{display:inline-flex;align-items:center;gap:3px}
+.entry .meta .chip.ph svg{width:11px;height:11px}
+.viewer{position:fixed;inset:0;background:#000;z-index:50;display:none;flex-direction:column}
+.viewer.open{display:flex}
+.viewer .vbar{display:flex;justify-content:space-between;align-items:center;padding:calc(12px + env(safe-area-inset-top)) 16px 12px;color:#fff}
+.viewer .vbar button{color:#fff;font-weight:600;font-size:15px;padding:6px 4px}
+.viewer .vbar button.del{color:#FF6B6B}
+.viewer .vbody{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;display:flex;align-items:center;justify-content:center}
+.viewer .vbody img{max-width:100%;max-height:100%;object-fit:contain}
+.viewer .vcap{color:#bbb;font-size:12px;text-align:center;padding:8px 16px calc(12px + env(safe-area-inset-bottom))}
 .trash{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
 .trash .trow{display:flex;justify-content:space-between;align-items:center;background:var(--tile);border-radius:12px;padding:10px 12px;font-size:13px;gap:10px}
 .trash .trow span{color:var(--muted);font-size:11px;display:block}
@@ -222,6 +237,7 @@ textarea.big:focus{outline:none;border-color:var(--ink);background:#fff}
   <button class="btn primary" id="btnAdd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>新增一筆</button>
 </div></div>
 
+<div class="viewer" id="viewer"><div class="vbar"><button type="button" id="vClose">關閉</button><span id="vTitle"></span><button type="button" class="del" id="vDel">刪除</button></div><div class="vbody"><img id="vImg" alt=""></div><div class="vcap" id="vCap">兩指可以放大</div></div>
 <div class="scrim" id="scrim"></div>
 
 <!-- entry form -->
@@ -252,6 +268,11 @@ textarea.big:focus{outline:none;border-color:var(--ink);background:#fff}
     <div class="calc">
       <div><div class="k">總時數</div><div class="v num" id="cHours">—</div></div>
       <div><div class="k">申請金額</div><div class="v num" id="cAmount">—</div></div>
+    </div>
+
+    <div class="field"><label>照片備註（平面圖、簽單）</label>
+      <div class="photos" id="fPhotos"></div>
+      <input type="file" id="fPhotoFile" accept="image/*" multiple hidden>
     </div>
 
     <details>
@@ -327,7 +348,7 @@ textarea.big:focus{outline:none;border-color:var(--ink);background:#fff}
 <script>
 (function(){
 const KEY='zilang-timesheet-v1';
-const APP_VERSION=14;
+const APP_VERSION=15;
 const $=id=>document.getElementById(id);
 const pad=n=>String(n).padStart(2,'0');
 const today=new Date();
@@ -453,6 +474,7 @@ function render(){
     if(Number(e.extra)>0)metaBits.push('<span class="chip">+'+e.extra+(e.extraNote||'')+'</span>');
     if(e.tag==='other')metaBits.unshift('<span class="chip">其他雇主</span>');
     if(ymOf(e.date)!==e.stmt)metaBits.push('<span class="chip">併入本月</span>');
+    if(e.photos&&e.photos.length)metaBits.push('<span class="chip ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>'+e.photos.length+'</span>');
     b.innerHTML=`<div class="date num"><b>${d}</b><i>${m}月</i></div><div class="main"><div class="place">${esc(e.place)}</div><div class="meta">${metaBits.join('')}</div></div><div class="amt num"><b>${c.pending?'—':c.amountNum.toLocaleString('zh-TW')}</b><i>${c.hoursText?(e.mode==='piece'||/半夜/.test(c.hoursText)?c.hoursText:c.hoursText+'h'):(e.mode==='flat'?'固定':'')}</i></div>`;
     b.addEventListener('click',()=>openForm(e));
     list.appendChild(b);
@@ -496,6 +518,7 @@ function openForm(e){
   $('fOvertime').value=v.overtime;$('fExtra').value=v.extra;$('fExtraNote').value=v.extraNote;$('fHoursOv').value=v.hoursOv;$('fAmountOv').value=v.amountOv;
   fillStmtOptions(v.date); $('fStmt').value=v.stmt;
   if(!$('fStmt').value){const o=document.createElement('option');o.value=v.stmt;o.textContent=v.stmt;$('fStmt').appendChild(o);$('fStmt').value=v.stmt;}
+  formPhotos=(v.photos||[]).slice(); renderFormPhotos();
   setMode(v.mode||'hour'); setTag(v.tag||'');
   openSheet('formSheet');
   if(!e)setTimeout(()=>$('fPlace').focus(),250);
@@ -504,7 +527,7 @@ function readForm(){
   return {id:editing?editing.id:uid(),date:$('fDate').value,place:$('fPlace').value.trim(),start:$('fStart').value,end:$('fEnd').value,
     rest:$('fRest').value.trim(),night:$('fNight').value.trim(),rate:$('fRate').value.trim(),nightRate:$('fNightRate').value.trim(),flat:$('fFlat').value.trim(),qty:$('fQty').value.trim(),pieceRate:$('fPieceRate').value.trim(),
     overtime:$('fOvertime').value.trim(),extra:$('fExtra').value.trim(),extraNote:$('fExtraNote').value.trim(),
-    hoursOv:$('fHoursOv').value.trim(),amountOv:$('fAmountOv').value.trim(),mode,tag,stmt:$('fStmt').value};
+    hoursOv:$('fHoursOv').value.trim(),amountOv:$('fAmountOv').value.trim(),mode,tag,stmt:$('fStmt').value,photos:formPhotos.slice()};
 }
 function preview(){
   const e=readForm(); const c=compute(e);
@@ -519,7 +542,8 @@ $('formSave').addEventListener('click',()=>{
   const e=readForm();
   if(state.sample){state.sample=false;state.entries=[];}
   const i=state.entries.findIndex(x=>x.id===e.id);
-  if(i>=0)state.entries[i]=e; else state.entries.push(e);
+  if(i>=0){(state.entries[i].photos||[]).forEach(id=>{if(!e.photos.includes(id))photoDel(id);});state.entries[i]=e;} else state.entries.push(e);
+  formPhotos=[];
   save(); view=e.stmt; closeSheets(); render();
 });
 let toastTimer=null;
@@ -529,7 +553,7 @@ function toast(msg,actionLabel,action){
   if(actionLabel)t.querySelector('button').addEventListener('click',()=>{action();t.remove();});
   document.body.appendChild(t); toastTimer=setTimeout(()=>t.remove(),6000);
 }
-function purgeTrash(){const cut=Date.now()-30*86400000; state.entries=state.entries.filter(e=>!e.deleted||e.deleted>cut);}
+function purgeTrash(){const cut=Date.now()-30*86400000; const gone=state.entries.filter(e=>e.deleted&&e.deleted<=cut); state.entries=state.entries.filter(e=>!e.deleted||e.deleted>cut); gone.forEach(e=>(e.photos||[]).forEach(id=>photoDel(id)));}
 $('formDelete').addEventListener('click',()=>{
   if(!editing)return; const id=editing.id; const e=state.entries.find(x=>x.id===id); if(!e)return;
   if(state.sample){state.sample=false;state.entries=[];save();closeSheets();render();return;}
@@ -718,10 +742,38 @@ $('reportPrint').addEventListener('click',()=>{
 
 $('verTag').textContent='v'+APP_VERSION;
 render();
+/* ---------- photos (IndexedDB) ---------- */
+let formPhotos=[]; const photoCache=new Map();
+function pdb(){return new Promise((res,rej)=>{const r=indexedDB.open('zilang-photos',1);r.onupgradeneeded=()=>r.result.createObjectStore('p');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
+async function photoPut(id,dataUrl){try{const db=await pdb();await new Promise((res,rej)=>{const t=db.transaction('p','readwrite');t.objectStore('p').put(dataUrl,id);t.oncomplete=res;t.onerror=()=>rej(t.error);});photoCache.set(id,dataUrl);}catch(e){}}
+async function photoGet(id){if(photoCache.has(id))return photoCache.get(id);try{const db=await pdb();const v=await new Promise((res,rej)=>{const r=db.transaction('p').objectStore('p').get(id);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});if(v)photoCache.set(id,v);return v||null;}catch(e){return null;}}
+async function photoDel(id){photoCache.delete(id);try{const db=await pdb();await new Promise((res,rej)=>{const t=db.transaction('p','readwrite');t.objectStore('p').delete(id);t.oncomplete=res;t.onerror=()=>rej(t.error);});}catch(e){}}
+async function photoAll(){try{const db=await pdb();return await new Promise((res,rej)=>{const out={};const r=db.transaction('p').objectStore('p').openCursor();r.onsuccess=()=>{const c=r.result;if(c){out[c.key]=c.value;c.continue();}else res(out);};r.onerror=()=>rej(r.error);});}catch(e){return {};}}
+function shrinkImage(file,max=1600,q=.82){return new Promise((res,rej)=>{const url=URL.createObjectURL(file);const img=new Image();img.onload=()=>{let w=img.naturalWidth,h=img.naturalHeight;const k=Math.min(1,max/Math.max(w,h));w=Math.round(w*k);h=Math.round(h*k);const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);URL.revokeObjectURL(url);res(c.toDataURL('image/jpeg',q));};img.onerror=()=>{URL.revokeObjectURL(url);rej(new Error('bad image'));};img.src=url;});}
+async function renderFormPhotos(){
+  const box=$('fPhotos'); box.innerHTML='';
+  for(const id of formPhotos){const b=document.createElement('button');b.type='button';b.className='ph';const img=document.createElement('img');b.appendChild(img);box.appendChild(b);photoGet(id).then(d=>{if(d)img.src=d;});b.addEventListener('click',()=>openViewer(id));}
+  const add=document.createElement('button');add.type='button';add.className='add';add.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>加照片';
+  add.addEventListener('click',()=>$('fPhotoFile').click()); box.appendChild(add);
+}
+$('fPhotoFile').addEventListener('change',async ev=>{
+  const files=[...ev.target.files]; ev.target.value=''; if(!files.length)return;
+  for(const f of files){try{const d=await shrinkImage(f);const id='p'+uid();await photoPut(id,d);formPhotos.push(id);}catch(e){toast('這張圖讀不進來');}}
+  renderFormPhotos();
+});
+let viewing=null;
+async function openViewer(id){viewing=id;$('vImg').src='';$('vImg').src=(await photoGet(id))||'';$('vTitle').textContent=($('fPlace').value||'').slice(0,18);$('viewer').classList.add('open');}
+function closeViewer(){$('viewer').classList.remove('open');viewing=null;}
+$('vClose').addEventListener('click',closeViewer);
+$('vDel').addEventListener('click',()=>{if(!viewing)return;const id=viewing;formPhotos=formPhotos.filter(x=>x!==id);closeViewer();renderFormPhotos();toast('已移除照片（儲存後生效）');});
+// 表單取消時，把這次新加但沒存的照片清掉
+$('formCancel').addEventListener('click',()=>{const kept=new Set(editing?(editing.photos||[]):[]);formPhotos.forEach(id=>{if(!kept.has(id))photoDel(id);});formPhotos=[];});
+
 /* ---------- file backup ---------- */
 function backupName(){const d=new Date();return '工時本備份_'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'.json';}
 async function backupToFile(){
-  const txt=JSON.stringify(Object.assign({},state,{exportedAt:new Date().toISOString(),appVersion:APP_VERSION}));
+  const used=new Set();state.entries.forEach(e=>(e.photos||[]).forEach(id=>used.add(id)));const all=await photoAll();const photos={};Object.keys(all).forEach(k=>{if(used.has(k))photos[k]=all[k];});
+  const txt=JSON.stringify(Object.assign({},state,{exportedAt:new Date().toISOString(),appVersion:APP_VERSION,photos}));
   const blob=new Blob([txt],{type:'application/json'}); const name=backupName();
   let ok=false;
   try{ if(navigator.share&&navigator.canShare&&navigator.canShare({files:[new File([blob],name,{type:'application/json'})]})){ await navigator.share({files:[new File([blob],name,{type:'application/json'})],title:'工時本備份'}); ok=true; } }catch(e){ if(e&&e.name==='AbortError')return; }
@@ -740,7 +792,7 @@ $('btnExportFile').addEventListener('click',backupToFile);
 $('btnBackupNow').addEventListener('click',backupToFile);
 $('btnBackupTop').addEventListener('click',backupToFile);
 $('btnImportFile').addEventListener('click',()=>$('fileRestore').click());
-$('fileRestore').addEventListener('change',ev=>{const f=ev.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=()=>{try{const s=JSON.parse(r.result); if(!Array.isArray(s.entries))throw 0; if(!confirm('要用這個備份（'+s.entries.length+' 筆）取代目前的資料嗎？'))return; state=Object.assign(defaults(),s,{settings:Object.assign(defaults().settings,s.settings||{})}); state.sample=false; save(); view=latestStmt()||view; closeSheets(); render(); toast('已從檔案還原');}catch(e){alert('這個檔案不是有效的備份。');} ev.target.value='';}; r.readAsText(f);});
+$('fileRestore').addEventListener('change',ev=>{const f=ev.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=()=>{try{const s=JSON.parse(r.result); if(!Array.isArray(s.entries))throw 0; if(!confirm('要用這個備份（'+s.entries.length+' 筆）取代目前的資料嗎？'))return; const ph=s.photos||{}; delete s.photos; state=Object.assign(defaults(),s,{settings:Object.assign(defaults().settings,s.settings||{})}); state.sample=false; save(); Object.keys(ph).forEach(k=>photoPut(k,ph[k])); view=latestStmt()||view; closeSheets(); render(); toast('已從檔案還原');}catch(e){alert('這個檔案不是有效的備份。');} ev.target.value='';}; r.readAsText(f);});
 /* ---------- update check + pull to refresh ---------- */
 function showUpdateBar(v){
   if($('updatebar'))return;
