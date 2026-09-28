@@ -1,4 +1,4 @@
-<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="工時本"></head><body>
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="工時本"></head><body>
 <title>子良工時本</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap">
 <style>
@@ -18,7 +18,8 @@ button{cursor:pointer;background:none;border:0;padding:0}
 .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
 
 /* ---------- shell ---------- */
-#app{max-width:520px;margin:0 auto;min-height:100dvh;padding:0 20px calc(96px + env(safe-area-inset-bottom))}
+#app{max-width:520px;margin:0 auto;min-height:100dvh;padding:env(safe-area-inset-top) 20px calc(96px + env(safe-area-inset-bottom))}
+.statusbg{position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top);background:var(--ground);z-index:15;pointer-events:none}
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:18px 0 4px}
 .topbar h1{font-size:26px;font-weight:700;margin:0;letter-spacing:-.01em;line-height:1.2}
 .topbar h1 small{display:block;font-size:12px;font-weight:400;color:var(--muted);letter-spacing:.08em;margin-top:2px}
@@ -181,18 +182,23 @@ textarea.big:focus{outline:none;border-color:var(--ink);background:#fff}
 .paper .pfoot2{margin-top:12px;font-size:13px;line-height:1.9}
 .paper .pfoot2 .rowx{display:flex;justify-content:space-between}
 .paper .pfoot2 .total{font-weight:700;padding-right:4px}
+.paper .photopage{margin-top:28px;padding-top:20px;border-top:1px dashed #999;page-break-before:always;break-before:page}
+.paper .photopage .pcap{font-size:13px;margin-bottom:8px}
+.paper .photopage img{display:block;max-width:100%;max-height:230mm;margin:0 auto;object-fit:contain}
 .reportnote{max-width:794px;margin:12px auto 0;font-size:12px;color:var(--muted)}
 
 @media print{
   @page{size:A4 portrait;margin:12mm}
+  .paper .photopage{border-top:0;margin-top:0;padding-top:0}
   body{background:#fff}
-  #app,.actionbar,.scrim,.sheet,.reportbar,.reportnote{display:none !important}
+  #app,.actionbar,.scrim,.sheet,.reportbar,.reportnote,.statusbg,.ptr{display:none !important}
   #report{display:block !important;position:static;overflow:visible;background:#fff}
   .reportwrap{padding:0;overflow:visible}
   .paper{width:auto;box-shadow:none;padding:0;margin:0}
 }
 </style>
 
+<div class="statusbg"></div>
 <div id="app">
   <div class="topbar">
     <h1><span id="brandName">子良</span><small>工時本 <span id="verTag"></span></small></h1>
@@ -301,11 +307,21 @@ textarea.big:focus{outline:none;border-color:var(--ink);background:#fff}
   <header><button class="cancel" id="setCancel">關閉</button><h2>設定</h2><button id="setSave">儲存</button></header>
   <div class="field"><label>姓名（印在表頭）</label><input type="text" id="sName"></div>
   <div class="row"><div class="field"><label>白天時薪</label><input type="text" id="sDay" class="mono" inputmode="numeric"></div><div class="field"><label>半夜時薪</label><input type="text" id="sNight" class="mono" inputmode="numeric"></div></div>
-  <div class="row"><div class="field"><label>走道班固定金額</label><input type="text" id="sFlat" class="mono" inputmode="numeric"></div><div class="field"><label>計件每格單價</label><input type="text" id="sPiece" class="mono" inputmode="numeric"></div></div>
+  <div class="row"><div class="field"><label>走道班固定金額（舊制）</label><input type="text" id="sFlat" class="mono" inputmode="numeric"></div><div class="field"><label>計件每格單價</label><input type="text" id="sPiece" class="mono" inputmode="numeric"></div></div>
+  <div class="row"><div class="field"><label>走道時薪（日夜同價）</label><input type="text" id="sAisle" class="mono" inputmode="numeric" placeholder="350"></div><div class="field"><label>走道時薪從哪個月起</label><input type="month" id="sAisleFrom" class="mono"></div></div>
+  <p class="hint">從這個月起，「進…走道」改用時薪算（含 22:00 以後），不再一式固定金額；之前的月份維持固定金額。</p>
   <div class="row"><div class="field"><label>最低計時（小時）</label><input type="text" id="sMin" class="mono" inputmode="decimal"></div><div class="field"><label>發薪日（每月幾號）</label><input type="text" id="sPay" class="mono" inputmode="numeric"></div></div>
   <div class="row"><div class="field"><label>公司半夜從幾點起</label><input type="text" id="sNF" class="mono" inputmode="numeric" placeholder="22"></div><div class="field"><label>到幾點止</label><input type="text" id="sNT" class="mono" inputmode="numeric" placeholder="6"></div></div>
   <div class="field"><label>其他雇主的關鍵字（開頭是這些字的，不列入公司月結表）</label><input type="text" id="sOther" placeholder="凱哥,傑哥,爸,偉謙,璦美,路寬,星光"></div>
   <div class="field"><label>其他雇主的時薪（名字=白天/半夜@半夜起-止，逗號分隔；沒列的會標待補）</label><input type="text" id="sOtherRates" placeholder="星光=300/350@22-7"></div>
+  <button class="btn" id="btnFeedback" style="width:100%;margin:6px 0 14px">回報問題／想改哪裡</button>
+  <h3 style="font-size:13px;font-weight:700;margin:18px 0 8px">雲端同步（Google Sheet）</h3>
+  <div class="field"><label>同步網址（Apps Script 部署網址）</label><input type="url" id="sSyncUrl" placeholder="https://script.google.com/macros/s/…/exec" autocapitalize="off" autocorrect="off"></div>
+  <div class="field"><label>密碼（token）</label><input type="text" id="sSyncToken" class="mono" autocapitalize="off" autocorrect="off"></div>
+  <div class="field"><label>Google Sheet 網址（給「打開 Google Sheet」按鈕用）</label><input type="url" id="sSheetUrl" placeholder="https://docs.google.com/spreadsheets/d/…" autocapitalize="off" autocorrect="off"></div>
+  <a class="btn primary" id="btnOpenSheet" href="#" target="_blank" rel="noopener" style="width:100%;margin-bottom:10px;text-decoration:none" hidden>打開 Google Sheet</a>
+  <div class="settings-actions" style="margin-top:0"><button class="btn" id="btnSyncNow">立即同步</button><button class="btn" id="btnSyncPull">從雲端還原</button></div>
+  <p class="hint" id="syncInfo">還沒設定。設定好之後每次新增／修改都會自動背景傳到 Google Sheet；沒網路會先排隊。</p>
   <h3 style="font-size:13px;font-weight:700;margin:18px 0 8px">備份與還原</h3>
   <button class="btn primary" id="btnExportFile" style="width:100%;margin-bottom:10px">備份到「檔案」</button>
   <div class="settings-actions" style="margin-top:0">
@@ -324,6 +340,15 @@ textarea.big:focus{outline:none;border-color:var(--ink);background:#fff}
   <button class="danger" id="btnWipe">清除全部資料</button>
 </div>
 
+<!-- feedback -->
+<div class="sheet" id="feedbackSheet" role="dialog" aria-label="回報">
+  <header><button class="cancel" id="fbCancel">取消</button><h2>回報問題／想改哪裡</h2><button id="fbSend">送出</button></header>
+  <div class="field"><label>怎麼稱呼</label><input type="text" id="fbName" placeholder="子良"></div>
+  <div class="field"><label>想說什麼（哪裡怪怪的、想加什麼、怎麼算比較對…）</label><textarea class="big" id="fbText" rows="6" placeholder="例：9/3 走道那筆金額好像不對，應該是…"></textarea></div>
+  <label style="display:flex;gap:8px;align-items:center;font-size:13px;margin:-4px 0 12px"><input type="checkbox" id="fbAttach" checked style="width:18px;height:18px"> 一起附上目前這個月的紀錄，方便對照</label>
+  <p class="hint">送出後會存到 Google Sheet 的「回報」分頁，Yoona 看到就會處理。</p>
+</div>
+
 <!-- import -->
 <div class="sheet" id="importSheet" role="dialog" aria-label="匯入">
   <header><button class="cancel" id="impCancel">取消</button><h2>從記事本匯入</h2><button id="impSave" disabled>匯入</button></header>
@@ -340,7 +365,7 @@ textarea.big:focus{outline:none;border-color:var(--ink);background:#fff}
 
 <!-- report -->
 <div id="report">
-  <div class="reportbar"><h2 id="reportTitle">月結表</h2><div class="acts"><button id="reportClose">返回</button><button class="go" id="reportPrint">存成 PDF</button></div></div>
+  <div class="reportbar"><h2 id="reportTitle">月結表</h2><div class="acts"><button id="reportClose">返回</button><button id="reportXlsx">下載 Excel</button><button class="go" id="reportPrint">存成 PDF</button></div></div>
   <div class="reportwrap"><div class="paper" id="paper"></div></div>
   <p class="reportnote">iPhone：按「存成 PDF」→ 列印畫面 → 用兩指把預覽放大 → 右上分享 → 儲存到檔案 或 傳到 LINE。</p>
 </div>
@@ -348,7 +373,7 @@ textarea.big:focus{outline:none;border-color:var(--ink);background:#fff}
 <script>
 (function(){
 const KEY='zilang-timesheet-v1';
-const APP_VERSION=15;
+const APP_VERSION=16;
 const $=id=>document.getElementById(id);
 const pad=n=>String(n).padStart(2,'0');
 const today=new Date();
@@ -360,12 +385,13 @@ let editing=null, mode='hour', tag='';
 
 function isoToday(){return today.getFullYear()+'-'+pad(today.getMonth()+1)+'-'+pad(today.getDate());}
 function latestStmt(){return state.entries.map(e=>e.stmt).sort().pop();}
-function defaults(){return {settings:{name:'子良',dayRate:260,nightRate:310,flatRate:1500,pieceRate:70,minHours:4,payDay:10,otherKeys:'凱哥,傑哥,爸,偉謙,璦美,路寬,星光,代調,父子,裕隆城',nightFrom:22,nightTo:6,otherRates:'星光=300/350@22-7'},entries:[],sample:false};}
+function defaults(){return {settings:{name:'子良',dayRate:260,nightRate:310,flatRate:1500,pieceRate:70,minHours:4,payDay:10,otherKeys:'凱哥,傑哥,爸,偉謙,璦美,路寬,星光,代調,父子,裕隆城',nightFrom:22,nightTo:6,otherRates:'星光=300/350@22-7',aisleRate:350,aisleFrom:'2026-09'},entries:[],sample:false};}
 function load(){
-  try{const raw=localStorage.getItem(KEY); if(raw){const s=JSON.parse(raw); const st=Object.assign(defaults().settings,s.settings||{}); if(st.otherRates==='星光=300/350')st.otherRates='星光=300/350@22-7'; if(!(s.settings&&s.settings.kwV>=14)){const have=String(st.otherKeys||'').split(/[,，\s]+/).filter(Boolean); ['代調','父子','裕隆城'].forEach(k=>{if(!have.includes(k))have.push(k);}); st.otherKeys=have.join(','); st.kwV=14;} (s.entries||[]).forEach(e=>{if(Number(e.night)>24){e.nightRate=e.night;e.night='';} if(e.tag==='other'&&e.rate&&Number(e.rate)===st.dayRate)e.rate='';}); return Object.assign(defaults(),s,{settings:st});}}catch(e){}
+  try{const raw=localStorage.getItem(KEY); if(raw){const s=JSON.parse(raw); const st=Object.assign(defaults().settings,s.settings||{}); if(st.otherRates==='星光=300/350')st.otherRates='星光=300/350@22-7'; if(!(s.settings&&s.settings.kwV>=14)){const have=String(st.otherKeys||'').split(/[,，\s]+/).filter(Boolean); ['代調','父子','裕隆城'].forEach(k=>{if(!have.includes(k))have.push(k);}); st.otherKeys=have.join(','); st.kwV=14;}
+    if(!(s.settings&&s.settings.aisleV>=16)){st.aisleRate=st.aisleRate||350;st.aisleFrom=st.aisleFrom||'2026-09';(s.entries||[]).forEach(e=>{if(e.mode==='flat'&&e.start&&e.end&&e.tag!=='other'&&/^進.*走道/.test(e.place||'')&&e.stmt>=st.aisleFrom){e.mode='hour';e.flat='';}});st.aisleV=16;} (s.entries||[]).forEach(e=>{if(Number(e.night)>24){e.nightRate=e.night;e.night='';} if(e.tag==='other'&&e.rate&&Number(e.rate)===st.dayRate)e.rate='';}); return Object.assign(defaults(),s,{settings:st});}}catch(e){}
   return defaults();
 }
-function save(){state.lastChangeAt=Date.now();try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}
+function save(){state.lastChangeAt=Date.now();state.syncDirty=true;try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){} if(typeof scheduleSync==='function')scheduleSync();}
 function uid(){return Math.random().toString(36).slice(2,10);}
 function sampleEntries(){
   const E=(date,place,start,end,o={})=>Object.assign({id:uid(),date,place,start,end,rest:'',night:'',rate:'',flat:'',qty:'',pieceRate:'',overtime:'',extra:'',extraNote:'',hoursOv:'',amountOv:'',mode:'hour',stmt:'2026-07'},o);
@@ -399,7 +425,8 @@ function otherRateFor(place){
 function compute(e){
   const S=state.settings;
   const rule=e.tag==='other'?otherRateFor(e.place||''):null;
-  const dayRate=Number(e.rate)||(rule?rule.day:S.dayRate), nightRate=Number(e.nightRate)||(rule?rule.night:S.nightRate);
+  const aisle=e.mode==='hour'&&aisleHourly(e);
+  const dayRate=Number(e.rate)||(rule?rule.day:(aisle?S.aisleRate:S.dayRate)), nightRate=Number(e.nightRate)||(rule?rule.night:(aisle?S.aisleRate:S.nightRate));
   const hasTime=!!(e.start&&e.end);
   let dur=0; if(hasTime){dur=(mins(e.end)-mins(e.start))/60; if(dur<=0)dur+=24;}
   const restN=/^\d+(\.\d+)?$/.test(String(e.rest).trim())?Number(e.rest):0;
@@ -565,9 +592,9 @@ $('prevM').addEventListener('click',()=>{view=shift(view,-1);render();});
 $('nextM').addEventListener('click',()=>{view=shift(view,1);render();});
 
 /* settings */
-$('btnSettings').addEventListener('click',()=>{const S=state.settings;$('sName').value=S.name;$('sDay').value=S.dayRate;$('sNight').value=S.nightRate;$('sFlat').value=S.flatRate;$('sPiece').value=S.pieceRate;$('sMin').value=S.minHours;$('sPay').value=S.payDay;$('sOther').value=S.otherKeys||'';$('sOtherRates').value=S.otherRates||'';$('sNF').value=S.nightFrom??22;$('sNT').value=S.nightTo??6;renderTrash();openSheet('settingsSheet');});
+$('btnSettings').addEventListener('click',()=>{const S=state.settings;$('sName').value=S.name;$('sDay').value=S.dayRate;$('sNight').value=S.nightRate;$('sFlat').value=S.flatRate;$('sPiece').value=S.pieceRate;$('sMin').value=S.minHours;$('sPay').value=S.payDay;$('sOther').value=S.otherKeys||'';$('sOtherRates').value=S.otherRates||'';$('sNF').value=S.nightFrom??22;$('sNT').value=S.nightTo??6;$('sAisle').value=S.aisleRate??350;$('sAisleFrom').value=S.aisleFrom||'2026-09';$('sSyncUrl').value=(state.sync&&state.sync.url)||'';$('sSyncToken').value=(state.sync&&state.sync.token)||'';$('sSheetUrl').value=(state.sync&&state.sync.sheetUrl)||'';renderSyncInfo();renderTrash();openSheet('settingsSheet');});
 $('setCancel').addEventListener('click',closeSheets);
-$('setSave').addEventListener('click',()=>{state.settings={name:$('sName').value.trim()||'工時',dayRate:Number($('sDay').value)||260,nightRate:Number($('sNight').value)||310,flatRate:Number($('sFlat').value)||1500,pieceRate:Number($('sPiece').value)||70,minHours:Number($('sMin').value)||0,payDay:Number($('sPay').value)||10,otherKeys:$('sOther').value.trim(),otherRates:$('sOtherRates').value.trim(),nightFrom:Number($('sNF').value)||22,nightTo:Number($('sNT').value)||6,kwV:14};save();closeSheets();render();});
+$('setSave').addEventListener('click',()=>{state.settings={name:$('sName').value.trim()||'工時',dayRate:Number($('sDay').value)||260,nightRate:Number($('sNight').value)||310,flatRate:Number($('sFlat').value)||1500,pieceRate:Number($('sPiece').value)||70,minHours:Number($('sMin').value)||0,payDay:Number($('sPay').value)||10,otherKeys:$('sOther').value.trim(),otherRates:$('sOtherRates').value.trim(),nightFrom:Number($('sNF').value)||22,nightTo:Number($('sNT').value)||6,aisleRate:Number($('sAisle').value)||350,aisleFrom:$('sAisleFrom').value||'2026-09',kwV:14,aisleV:16};state.sync=Object.assign({},state.sync||{},{url:$('sSyncUrl').value.trim(),token:$('sSyncToken').value.trim(),sheetUrl:$('sSheetUrl').value.trim()});save();closeSheets();render();});
 $('btnExport').addEventListener('click',async()=>{const txt=JSON.stringify(state);try{await navigator.clipboard.writeText(txt);$('btnExport').textContent='已複製，貼到 LINE 記事本存好';}catch(e){window.prompt('全選複製這段文字：',txt);}setTimeout(()=>$('btnExport').textContent='改用複製文字的方式備份',2500);});
 $('btnImport').addEventListener('click',()=>{const txt=window.prompt('貼上之前備份的內容：');if(!txt)return;try{const s=JSON.parse(txt);if(!Array.isArray(s.entries))throw 0;state=Object.assign(defaults(),s);state.sample=false;save();view=latestStmt()||view;closeSheets();render();}catch(e){alert('這段內容不是有效的備份。');}});
 $('btnWipe').addEventListener('click',()=>{
@@ -591,7 +618,9 @@ function renderTrash(){
 const CN_NUM={'一':1,'二':2,'兩':2,'三':3,'四':4,'半':0.5,'一個半':1.5,'1':1,'2':2,'3':3,'0.5':0.5,'1.5':1.5};
 function otherKeywords(){return String(state.settings.otherKeys||'').split(/[,，\s]+/).filter(Boolean);}
 function isOther(place){return otherKeywords().some(k=>place.startsWith(k));}
-function isFlatPlace(place){return /^進.*走道/.test(place)||/^拆櫃/.test(place);}
+function isAislePlace(place){return /^進.*走道/.test(place||'');}
+function aisleHourly(e){const S=state.settings;return !!(S.aisleRate&&S.aisleFrom&&e.stmt>=S.aisleFrom&&isAislePlace(e.place)&&e.tag!=='other');}
+function isFlatPlace(place,stmt){const S=state.settings;if(isAislePlace(place)&&S.aisleRate&&S.aisleFrom&&stmt&&stmt>=S.aisleFrom)return false;return isAislePlace(place)||/^拆櫃/.test(place);}
 function blankEntry(stmt){return {id:uid(),date:'',place:'',start:'',end:'',rest:'',night:'',rate:'',flat:'',qty:'',pieceRate:'',overtime:'',extra:'',extraNote:'',hoursOv:'',amountOv:'',mode:'hour',tag:'',stmt};}
 // time token: 8. / 8.30 / 17:30 / 08:00 / 0.-4.30
 const T='(\\d{1,2})(?:[.:：](\\d{2}))?\\.?';
@@ -643,7 +672,7 @@ function parseImport(text, stmt){
       e.place=s.replace(/\s+/g,' ').trim();
       // rules
       if(e.place&&isOther(e.place))e.tag='other';
-      if(e.mode==='hour'&&e.place&&isFlatPlace(e.place)&&e.tag!=='other'){e.mode='flat';e.flat=amt||'';amt='';}
+      if(e.mode==='hour'&&e.place&&isFlatPlace(e.place,e.stmt)&&e.tag!=='other'){e.mode='flat';e.flat=amt||'';amt='';}
       if(e.mode==='hour'&&e.start&&e.end&&!e.rest){ let d=(mins(e.end)-mins(e.start))/60; if(d<=0)d+=24; e.rest=(e.tag!=='other'&&d>=8)?'1':'X'; }
       if(amt){
         if(e.mode==='piece'){ if(String(compute(e).amountNum)!==amt)e.amountOv=amt; }
@@ -698,6 +727,12 @@ function paperRow(e,showM){
   return `<tr><td class="r">${showM?m:''}</td><td class="r">${d}</td><td class="l">${esc(e.place)}</td><td class="r">${e.start}</td><td class="r">${e.end}</td><td class="l">${esc(c.restText)}</td><td class="r">${esc(c.hoursText)}</td><td class="l">${esc(e.overtime)}</td><td class="r">${esc(c.rateText)}</td><td class="r">${esc(c.amountText)}</td></tr>`;
 }
 const NEW_FORMAT_FROM='2026-09'; // 115年9月起：表頭改「X月份」、攤位計件另起一區
+const photoMeta=new Map();
+async function preloadPhotos(ym){
+  const ids=[]; monthEntries(ym).filter(e=>e.tag!=='other').forEach(e=>(e.photos||[]).forEach(id=>ids.push(id)));
+  await Promise.all(ids.map(async id=>{ if(photoMeta.has(id))return; const d=await photoGet(id); if(!d)return; await new Promise(res=>{const im=new Image();im.onload=()=>{photoMeta.set(id,{data:d,w:im.naturalWidth,h:im.naturalHeight});res();};im.onerror=res;im.src=d;}); }));
+}
+function photoList(ym){ const out=[]; monthEntries(ym).filter(e=>e.tag!=='other').forEach(e=>(e.photos||[]).forEach((id,i)=>{const m=photoMeta.get(id); if(m)out.push({id,e,i,m});})); return out; }
 function buildPaper(){
   const rows=monthEntries(view).filter(e=>e.tag!=='other'); const r=roc(view); const S=state.settings;
   const last=lastDay(view); const isNew=view>=NEW_FORMAT_FROM;
@@ -727,11 +762,12 @@ function buildPaper(){
     html+=`</tbody></table>`;
     html+=`<div class="pfoot"><span>備註:<br>*務必附上簽單聯核對工程用*審核人員:</span><span class="total">總計金額:＝ ${totalTxt}</span></div>`;
   }
+  photoList(view).forEach(p=>{const d=Number(p.e.date.slice(8)); html+=`<div class="photopage"><div class="pcap">${r.m}/${d}　${esc(p.e.place)}　照片${p.i+1}</div><img src="${p.m.data}" alt=""></div>`;});
   $('paper').innerHTML=html;
   $('reportTitle').textContent=r.y+'年'+r.m+'月 月結表';
   document.title=S.name+' '+r.y+'年'+r.m+'月 工時表';
 }
-$('btnReport').addEventListener('click',()=>{buildPaper();$('report').classList.add('open');});
+$('btnReport').addEventListener('click',async()=>{await preloadPhotos(view);buildPaper();$('report').classList.add('open');});
 $('reportClose').addEventListener('click',()=>{$('report').classList.remove('open');document.title='子良工時本';});
 $('reportPrint').addEventListener('click',()=>{
   buildPaper();
@@ -768,6 +804,177 @@ $('vClose').addEventListener('click',closeViewer);
 $('vDel').addEventListener('click',()=>{if(!viewing)return;const id=viewing;formPhotos=formPhotos.filter(x=>x!==id);closeViewer();renderFormPhotos();toast('已移除照片（儲存後生效）');});
 // 表單取消時，把這次新加但沒存的照片清掉
 $('formCancel').addEventListener('click',()=>{const kept=new Set(editing?(editing.photos||[]):[]);formPhotos.forEach(id=>{if(!kept.has(id))photoDel(id);});formPhotos=[];});
+
+
+/* ---------- Excel export (company template) ---------- */
+const XLSX_STYLES="<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<styleSheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\" mc:Ignorable=\"x14ac x16r2\" xmlns:x14ac=\"http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac\" xmlns:x16r2=\"http://schemas.microsoft.com/office/spreadsheetml/2015/02/main\"><numFmts count=\"2\"><numFmt numFmtId=\"176\" formatCode=\"0;\\-0;0* \"/><numFmt numFmtId=\"177\" formatCode=\"00&quot;:&quot;00\"/></numFmts><fonts count=\"11\" x14ac:knownFonts=\"1\"><font><sz val=\"12\"/><color indexed=\"8\"/><name val=\"新細明體\"/><charset val=\"136\"/></font><font><b/><sz val=\"12\"/><color indexed=\"8\"/><name val=\"新細明體\"/><charset val=\"136\"/></font><font><sz val=\"10\"/><color indexed=\"8\"/><name val=\"新細明體\"/><charset val=\"136\"/></font><font><sz val=\"10\"/><color indexed=\"8\"/><name val=\"新細明體\"/><charset val=\"136\"/></font><font><sz val=\"12\"/><color indexed=\"8\"/><name val=\"新細明體\"/><charset val=\"136\"/></font><font><sz val=\"9\"/><name val=\"新細明體\"/><family val=\"1\"/><charset val=\"136\"/></font><font><sz val=\"22\"/><color indexed=\"8\"/><name val=\"微軟正黑體\"/><family val=\"2\"/><charset val=\"136\"/></font><font><sz val=\"9\"/><name val=\"新細明體\"/><charset val=\"136\"/></font><font><sz val=\"12\"/><color indexed=\"8\"/><name val=\"微軟正黑體\"/><family val=\"2\"/><charset val=\"136\"/></font><font><sz val=\"10\"/><color indexed=\"8\"/><name val=\"微軟正黑體\"/><family val=\"2\"/><charset val=\"136\"/></font><font><b/><sz val=\"12\"/><color indexed=\"8\"/><name val=\"微軟正黑體\"/><family val=\"2\"/><charset val=\"136\"/></font></fonts><fills count=\"3\"><fill><patternFill patternType=\"none\"/></fill><fill><patternFill patternType=\"gray125\"/></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FFFFFF00\"/><bgColor indexed=\"64\"/></patternFill></fill></fills><borders count=\"16\"><border><left/><right/><top/><bottom/><diagonal/></border><border><left/><right/><top/><bottom style=\"thin\"><color indexed=\"64\"/></bottom><diagonal/></border><border><left style=\"thin\"><color indexed=\"64\"/></left><right style=\"thin\"><color indexed=\"64\"/></right><top style=\"thin\"><color indexed=\"64\"/></top><bottom style=\"thin\"><color indexed=\"64\"/></bottom><diagonal/></border><border><left style=\"thin\"><color indexed=\"64\"/></left><right style=\"thin\"><color indexed=\"64\"/></right><top/><bottom/><diagonal/></border><border><left/><right style=\"thin\"><color indexed=\"64\"/></right><top style=\"thin\"><color indexed=\"64\"/></top><bottom/><diagonal/></border><border><left style=\"thin\"><color indexed=\"64\"/></left><right/><top style=\"thin\"><color indexed=\"64\"/></top><bottom/><diagonal/></border><border><left/><right/><top style=\"thin\"><color indexed=\"64\"/></top><bottom/><diagonal/></border><border><left/><right style=\"thin\"><color indexed=\"64\"/></right><top/><bottom/><diagonal/></border><border><left style=\"thin\"><color indexed=\"64\"/></left><right/><top/><bottom/><diagonal/></border><border><left style=\"thin\"><color indexed=\"64\"/></left><right/><top/><bottom style=\"thin\"><color indexed=\"64\"/></bottom><diagonal/></border><border><left/><right style=\"thin\"><color indexed=\"64\"/></right><top/><bottom style=\"thin\"><color indexed=\"64\"/></bottom><diagonal/></border><border><left style=\"thin\"><color indexed=\"64\"/></left><right style=\"thin\"><color indexed=\"64\"/></right><top style=\"thin\"><color indexed=\"64\"/></top><bottom/><diagonal/></border><border><left style=\"thin\"><color indexed=\"64\"/></left><right style=\"thin\"><color indexed=\"64\"/></right><top/><bottom style=\"thin\"><color indexed=\"64\"/></bottom><diagonal/></border><border><left style=\"thin\"><color indexed=\"64\"/></left><right/><top style=\"thin\"><color indexed=\"64\"/></top><bottom style=\"thin\"><color indexed=\"64\"/></bottom><diagonal/></border><border><left/><right/><top style=\"thin\"><color indexed=\"64\"/></top><bottom style=\"thin\"><color indexed=\"64\"/></bottom><diagonal/></border><border><left/><right style=\"thin\"><color indexed=\"64\"/></right><top style=\"thin\"><color indexed=\"64\"/></top><bottom style=\"thin\"><color indexed=\"64\"/></bottom><diagonal/></border></borders><cellStyleXfs count=\"1\"><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\"><alignment vertical=\"center\"/></xf></cellStyleXfs><cellXfs count=\"76\"><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\" xfId=\"0\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"1\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyFont=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"3\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"3\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyBorder=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"4\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"177\" fontId=\"0\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyNumberFormat=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"176\" fontId=\"0\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyNumberFormat=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"left\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyNumberFormat=\"1\" applyBorder=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"176\" fontId=\"0\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyNumberFormat=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"right\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"3\" xfId=\"0\" applyFill=\"1\" applyBorder=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"1\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"20\" fontId=\"0\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyNumberFormat=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"5\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"6\" xfId=\"0\" applyBorder=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"8\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"9\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"1\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"4\" xfId=\"0\" applyBorder=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"4\" fillId=\"0\" borderId=\"7\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"10\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"7\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"176\" fontId=\"0\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyNumberFormat=\"1\" applyBorder=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"4\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"left\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyFont=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"9\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"9\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"177\" fontId=\"8\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyNumberFormat=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"176\" fontId=\"8\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyNumberFormat=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"right\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyNumberFormat=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"2\" borderId=\"2\" xfId=\"0\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"2\" borderId=\"2\" xfId=\"0\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"20\" fontId=\"8\" fillId=\"2\" borderId=\"2\" xfId=\"0\" applyNumberFormat=\"1\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"176\" fontId=\"8\" fillId=\"2\" borderId=\"2\" xfId=\"0\" applyNumberFormat=\"1\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"right\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"2\" borderId=\"2\" xfId=\"0\" applyNumberFormat=\"1\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"10\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyFont=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"20\" fontId=\"8\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyNumberFormat=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"right\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"2\" borderId=\"2\" xfId=\"0\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"right\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"11\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"5\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"6\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"4\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"8\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"9\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"1\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"10\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment horizontal=\"right\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"7\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"left\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"12\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"7\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"left\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"left\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"6\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"1\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"4\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"left\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"6\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"left\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"right\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"13\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"left\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"14\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"left\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"15\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"left\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"7\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"left\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"1\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"4\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"left\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"4\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"20\" fontId=\"8\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyNumberFormat=\"1\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"right\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyFill=\"1\"><alignment vertical=\"center\"/></xf></cellXfs><cellStyles count=\"1\"><cellStyle name=\"一般\" xfId=\"0\" builtinId=\"0\"/></cellStyles><dxfs count=\"0\"/><tableStyles count=\"0\" defaultTableStyle=\"TableStyleMedium2\" defaultPivotStyle=\"PivotStyleLight16\"/><extLst><ext uri=\"{EB79DEF2-80B8-43e5-95BD-54CBDDF9020C}\" xmlns:x14=\"http://schemas.microsoft.com/office/spreadsheetml/2009/9/main\"><x14:slicerStyles defaultSlicerStyle=\"SlicerStyleLight1\"/></ext><ext uri=\"{9260A510-F301-46a8-8635-F512D64BE5F5}\" xmlns:x15=\"http://schemas.microsoft.com/office/spreadsheetml/2010/11/main\"><x15:timelineStyles defaultTimelineStyle=\"TimeSlicerStyleLight1\"/></ext></extLst></styleSheet>";
+const XLSX_THEME="<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<a:theme xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" name=\"Office 主题​​\"><a:themeElements><a:clrScheme name=\"Office\"><a:dk1><a:sysClr val=\"windowText\" lastClr=\"000000\"/></a:dk1><a:lt1><a:sysClr val=\"window\" lastClr=\"FFFFFF\"/></a:lt1><a:dk2><a:srgbClr val=\"1F497D\"/></a:dk2><a:lt2><a:srgbClr val=\"EEECE1\"/></a:lt2><a:accent1><a:srgbClr val=\"4F81BD\"/></a:accent1><a:accent2><a:srgbClr val=\"C0504D\"/></a:accent2><a:accent3><a:srgbClr val=\"9BBB59\"/></a:accent3><a:accent4><a:srgbClr val=\"8064A2\"/></a:accent4><a:accent5><a:srgbClr val=\"4BACC6\"/></a:accent5><a:accent6><a:srgbClr val=\"F79646\"/></a:accent6><a:hlink><a:srgbClr val=\"0000FF\"/></a:hlink><a:folHlink><a:srgbClr val=\"800080\"/></a:folHlink></a:clrScheme><a:fontScheme name=\"Office\"><a:majorFont><a:latin typeface=\"Cambria\"/><a:ea typeface=\"\"/><a:cs typeface=\"\"/><a:font script=\"Arab\" typeface=\"Times New Roman\"/><a:font script=\"Beng\" typeface=\"Vrinda\"/><a:font script=\"Cans\" typeface=\"Euphemia\"/><a:font script=\"Cher\" typeface=\"Plantagenet Cherokee\"/><a:font script=\"Deva\" typeface=\"Mangal\"/><a:font script=\"Ethi\" typeface=\"Nyala\"/><a:font script=\"Geor\" typeface=\"Sylfaen\"/><a:font script=\"Gujr\" typeface=\"Shruti\"/><a:font script=\"Guru\" typeface=\"Raavi\"/><a:font script=\"Hang\" typeface=\"맑은 고딕\"/><a:font script=\"Hans\" typeface=\"宋体\"/><a:font script=\"Hant\" typeface=\"新細明體\"/><a:font script=\"Hebr\" typeface=\"Times New Roman\"/><a:font script=\"Jpan\" typeface=\"ＭＳ Ｐゴシック\"/><a:font script=\"Khmr\" typeface=\"MoolBoran\"/><a:font script=\"Knda\" typeface=\"Tunga\"/><a:font script=\"Laoo\" typeface=\"DokChampa\"/><a:font script=\"Mlym\" typeface=\"Kartika\"/><a:font script=\"Mong\" typeface=\"Mongolian Baiti\"/><a:font script=\"Orya\" typeface=\"Kalinga\"/><a:font script=\"Sinh\" typeface=\"Iskoola Pota\"/><a:font script=\"Syrc\" typeface=\"Estrangelo Edessa\"/><a:font script=\"Taml\" typeface=\"Latha\"/><a:font script=\"Telu\" typeface=\"Gautami\"/><a:font script=\"Thaa\" typeface=\"MV Boli\"/><a:font script=\"Thai\" typeface=\"Tahoma\"/><a:font script=\"Tibt\" typeface=\"Microsoft Himalaya\"/><a:font script=\"Uigh\" typeface=\"Microsoft Uighur\"/><a:font script=\"Viet\" typeface=\"Times New Roman\"/><a:font script=\"Yiii\" typeface=\"Microsoft Yi Baiti\"/></a:majorFont><a:minorFont><a:latin typeface=\"Calibri\"/><a:ea typeface=\"\"/><a:cs typeface=\"\"/><a:font script=\"Arab\" typeface=\"Arial\"/><a:font script=\"Beng\" typeface=\"Vrinda\"/><a:font script=\"Cans\" typeface=\"Euphemia\"/><a:font script=\"Cher\" typeface=\"Plantagenet Cherokee\"/><a:font script=\"Deva\" typeface=\"Mangal\"/><a:font script=\"Ethi\" typeface=\"Nyala\"/><a:font script=\"Geor\" typeface=\"Sylfaen\"/><a:font script=\"Gujr\" typeface=\"Shruti\"/><a:font script=\"Guru\" typeface=\"Raavi\"/><a:font script=\"Hang\" typeface=\"맑은 고딕\"/><a:font script=\"Hans\" typeface=\"宋体\"/><a:font script=\"Hant\" typeface=\"新細明體\"/><a:font script=\"Hebr\" typeface=\"Arial\"/><a:font script=\"Jpan\" typeface=\"ＭＳ Ｐゴシック\"/><a:font script=\"Khmr\" typeface=\"DaunPenh\"/><a:font script=\"Knda\" typeface=\"Tunga\"/><a:font script=\"Laoo\" typeface=\"DokChampa\"/><a:font script=\"Mlym\" typeface=\"Kartika\"/><a:font script=\"Mong\" typeface=\"Mongolian Baiti\"/><a:font script=\"Orya\" typeface=\"Kalinga\"/><a:font script=\"Sinh\" typeface=\"Iskoola Pota\"/><a:font script=\"Syrc\" typeface=\"Estrangelo Edessa\"/><a:font script=\"Taml\" typeface=\"Latha\"/><a:font script=\"Telu\" typeface=\"Gautami\"/><a:font script=\"Thaa\" typeface=\"MV Boli\"/><a:font script=\"Thai\" typeface=\"Tahoma\"/><a:font script=\"Tibt\" typeface=\"Microsoft Himalaya\"/><a:font script=\"Uigh\" typeface=\"Microsoft Uighur\"/><a:font script=\"Viet\" typeface=\"Arial\"/><a:font script=\"Yiii\" typeface=\"Microsoft Yi Baiti\"/></a:minorFont></a:fontScheme><a:fmtScheme name=\"Office\"><a:fillStyleLst><a:solidFill><a:schemeClr val=\"phClr\"/></a:solidFill><a:gradFill rotWithShape=\"1\"><a:gsLst><a:gs pos=\"0\"><a:schemeClr val=\"phClr\"><a:tint val=\"50000\"/><a:satMod val=\"300000\"/></a:schemeClr></a:gs><a:gs pos=\"35000\"><a:schemeClr val=\"phClr\"><a:tint val=\"37000\"/><a:satMod val=\"300000\"/></a:schemeClr></a:gs><a:gs pos=\"100000\"><a:schemeClr val=\"phClr\"><a:tint val=\"15000\"/><a:satMod val=\"350000\"/></a:schemeClr></a:gs></a:gsLst><a:lin ang=\"16200000\" scaled=\"1\"/></a:gradFill><a:gradFill rotWithShape=\"1\"><a:gsLst><a:gs pos=\"0\"><a:schemeClr val=\"phClr\"><a:shade val=\"51000\"/><a:satMod val=\"130000\"/></a:schemeClr></a:gs><a:gs pos=\"80000\"><a:schemeClr val=\"phClr\"><a:shade val=\"93000\"/><a:satMod val=\"130000\"/></a:schemeClr></a:gs><a:gs pos=\"100000\"><a:schemeClr val=\"phClr\"><a:shade val=\"94000\"/><a:satMod val=\"135000\"/></a:schemeClr></a:gs></a:gsLst><a:lin ang=\"16200000\" scaled=\"0\"/></a:gradFill></a:fillStyleLst><a:lnStyleLst><a:ln w=\"9525\" cap=\"flat\" cmpd=\"sng\" algn=\"ctr\"><a:solidFill><a:schemeClr val=\"phClr\"><a:shade val=\"95000\"/><a:satMod val=\"105000\"/></a:schemeClr></a:solidFill><a:prstDash val=\"solid\"/></a:ln><a:ln w=\"25400\" cap=\"flat\" cmpd=\"sng\" algn=\"ctr\"><a:solidFill><a:schemeClr val=\"phClr\"/></a:solidFill><a:prstDash val=\"solid\"/></a:ln><a:ln w=\"38100\" cap=\"flat\" cmpd=\"sng\" algn=\"ctr\"><a:solidFill><a:schemeClr val=\"phClr\"/></a:solidFill><a:prstDash val=\"solid\"/></a:ln></a:lnStyleLst><a:effectStyleLst><a:effectStyle><a:effectLst><a:outerShdw blurRad=\"40000\" dist=\"20000\" dir=\"5400000\" rotWithShape=\"0\"><a:srgbClr val=\"000000\"><a:alpha val=\"38000\"/></a:srgbClr></a:outerShdw></a:effectLst></a:effectStyle><a:effectStyle><a:effectLst><a:outerShdw blurRad=\"40000\" dist=\"23000\" dir=\"5400000\" rotWithShape=\"0\"><a:srgbClr val=\"000000\"><a:alpha val=\"35000\"/></a:srgbClr></a:outerShdw></a:effectLst></a:effectStyle><a:effectStyle><a:effectLst><a:outerShdw blurRad=\"40000\" dist=\"23000\" dir=\"5400000\" rotWithShape=\"0\"><a:srgbClr val=\"000000\"><a:alpha val=\"35000\"/></a:srgbClr></a:outerShdw></a:effectLst><a:scene3d><a:camera prst=\"orthographicFront\"><a:rot lat=\"0\" lon=\"0\" rev=\"0\"/></a:camera><a:lightRig rig=\"threePt\" dir=\"t\"><a:rot lat=\"0\" lon=\"0\" rev=\"1200000\"/></a:lightRig></a:scene3d><a:sp3d><a:bevelT w=\"63500\" h=\"25400\"/></a:sp3d></a:effectStyle></a:effectStyleLst><a:bgFillStyleLst><a:solidFill><a:schemeClr val=\"phClr\"/></a:solidFill><a:gradFill rotWithShape=\"1\"><a:gsLst><a:gs pos=\"0\"><a:schemeClr val=\"phClr\"><a:tint val=\"40000\"/><a:satMod val=\"350000\"/></a:schemeClr></a:gs><a:gs pos=\"40000\"><a:schemeClr val=\"phClr\"><a:tint val=\"45000\"/><a:satMod val=\"350000\"/><a:shade val=\"99000\"/></a:schemeClr></a:gs><a:gs pos=\"100000\"><a:schemeClr val=\"phClr\"><a:shade val=\"20000\"/><a:satMod val=\"255000\"/></a:schemeClr></a:gs></a:gsLst><a:path path=\"circle\"><a:fillToRect l=\"50000\" t=\"-80000\" r=\"50000\" b=\"180000\"/></a:path></a:gradFill><a:gradFill rotWithShape=\"1\"><a:gsLst><a:gs pos=\"0\"><a:schemeClr val=\"phClr\"><a:tint val=\"80000\"/><a:satMod val=\"300000\"/></a:schemeClr></a:gs><a:gs pos=\"100000\"><a:schemeClr val=\"phClr\"><a:shade val=\"30000\"/><a:satMod val=\"200000\"/></a:schemeClr></a:gs></a:gsLst><a:path path=\"circle\"><a:fillToRect l=\"50000\" t=\"50000\" r=\"50000\" b=\"50000\"/></a:path></a:gradFill></a:bgFillStyleLst></a:fmtScheme></a:themeElements><a:objectDefaults><a:spDef><a:spPr><a:xfrm><a:off x=\"0\" y=\"0\"/><a:ext cx=\"0\" cy=\"0\"/></a:xfrm><a:custGeom><a:avLst/><a:gdLst><a:gd name=\"_h\" fmla=\"val 21600\"/><a:gd name=\"_w\" fmla=\"val 21600\"/></a:gdLst><a:ahLst/><a:cxnLst/><a:rect l=\"0\" t=\"0\" r=\"0\" b=\"0\"/><a:pathLst><a:path w=\"21600\" h=\"21600\"/></a:pathLst></a:custGeom><a:gradFill rotWithShape=\"0\"><a:gsLst><a:gs pos=\"100000\"><a:srgbClr val=\"9CBEE0\"/></a:gs><a:gs pos=\"0\"><a:srgbClr val=\"BBD5F0\"/></a:gs></a:gsLst><a:lin ang=\"5400000\" scaled=\"0\"/></a:gradFill><a:ln w=\"15875\" cap=\"flat\" cmpd=\"sng\" algn=\"ctr\"><a:solidFill><a:srgbClr val=\"739CC3\"/></a:solidFill><a:prstDash val=\"solid\"/><a:miter lim=\"200000\"/></a:ln></a:spPr><a:bodyPr/><a:lstStyle/></a:spDef></a:objectDefaults><a:extraClrSchemeLst/></a:theme>";
+const XLSX_SHEET_HEAD="<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\" mc:Ignorable=\"x14ac\" xmlns:x14ac=\"http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac\"><sheetPr><pageSetUpPr fitToPage=\"1\"/></sheetPr><dimension ref=\"A1:J40\"/><sheetViews><sheetView tabSelected=\"1\" zoomScale=\"110\" zoomScaleNormal=\"110\" workbookViewId=\"0\"><selection activeCell=\"A1\" sqref=\"A1\"/></sheetView></sheetViews><sheetFormatPr defaultColWidth=\"8.5\" defaultRowHeight=\"15.75\" x14ac:dyDescent=\"0.25\"/><cols><col min=\"1\" max=\"1\" width=\"4.125\" style=\"27\" customWidth=\"1\"/><col min=\"2\" max=\"2\" width=\"3.75\" style=\"27\" customWidth=\"1\"/><col min=\"3\" max=\"3\" width=\"40.5\" style=\"27\" customWidth=\"1\"/><col min=\"4\" max=\"5\" width=\"9.75\" style=\"44\" customWidth=\"1\"/><col min=\"6\" max=\"6\" width=\"5.75\" style=\"54\" customWidth=\"1\"/><col min=\"7\" max=\"7\" width=\"7.75\" style=\"27\" customWidth=\"1\"/><col min=\"8\" max=\"8\" width=\"7.25\" style=\"27\" customWidth=\"1\"/><col min=\"9\" max=\"9\" width=\"7.125\" style=\"27\" customWidth=\"1\"/><col min=\"10\" max=\"10\" width=\"10.125\" style=\"27\" customWidth=\"1\"/><col min=\"11\" max=\"16384\" width=\"8.5\" style=\"27\"/></cols>";
+const XLSX_SHEET_TAIL="__MERGES__<phoneticPr fontId=\"5\" type=\"noConversion\"/><printOptions horizontalCentered=\"1\"/><pageMargins left=\"0\" right=\"0\" top=\"0\" bottom=\"0.15748031496062992\" header=\"0.51181102362204722\" footer=\"0.51181102362204722\"/><pageSetup paperSize=\"9\" fitToWidth=\"1\" fitToHeight=\"0\" orientation=\"portrait\" horizontalDpi=\"300\" verticalDpi=\"300\"/></worksheet>";
+function xesc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function xcell(ref,s,v){
+  if(v===''||v==null)return `<c r="${ref}" s="${s}"/>`;
+  if(typeof v==='number')return `<c r="${ref}" s="${s}"><v>${v}</v></c>`;
+  if(v&&v.f)return `<c r="${ref}" s="${s}"><f>${v.f}</f>${v.v!=null?`<v>${v.v}</v>`:''}</c>`;
+  return `<c r="${ref}" s="${s}" t="inlineStr"><is><t xml:space="preserve">${xesc(v)}</t></is></c>`;
+}
+function xrow(r,cells,extra){return `<row r="${r}" spans="1:10" ht="23.25" customHeight="1"${extra||''}>`+cells.join('')+'</row>';}
+function xnum(t){return /^-?\d+(\.\d+)?$/.test(String(t).trim())?Number(t):String(t);}
+function buildXlsxSheet(ym){
+  const rows=monthEntries(ym).filter(e=>e.tag!=='other'); const r=roc(ym); const S=state.settings;
+  const work=rows.filter(e=>e.mode!=='piece'), piece=rows.filter(e=>e.mode==='piece');
+  const L='ABCDEFGHIJ'; const out=[]; const merges=[];
+  const bigRow=(n,text,s,ht)=>`<row r="${n}" spans="1:10" ht="${ht}" customHeight="1">`+L.split('').map((c,i)=>i===0?xcell(c+n,s,text):`<c r="${c}${n}" s="${s}"/>`).join('')+'</row>';
+  out.push(bigRow(1,S.name,59,'32.25')); merges.push(`A1:J1`);
+  out.push(bigRow(2,`${r.y}年${r.m}月份`,60,'26.25')); merges.push(`A2:J2`);
+  const hdr=['月','日','施工地點  /  展別','出勤時間    起','出勤時間    止','休息','總時數','加班時數    段','單價','申請金額'];
+  out.push(`<row r="3" spans="1:10" ht="27">`+hdr.map((h,i)=>xcell(L[i]+'3',[28,29,29,28,28,29,29,28,29,29][i],h)).join('')+'</row>');
+  let n=4; let prevM=null;
+  const dataRow=(e)=>{
+    const c=compute(e); const m=Number(e.date.slice(5,7)), d=Number(e.date.slice(8));
+    const hours=e.mode==='piece'?(c.hoursText||''):xnum(c.hoursText||''); const rate=xnum(c.rateText||''); const amt=xnum(c.amountText||'');
+    let J=amt; if(typeof hours==='number'&&typeof rate==='number'&&typeof amt==='number'&&Math.abs(hours*rate-amt)<0.01)J={f:`G${n}*I${n}`,v:amt};
+    const cells=[xcell('A'+n,30,m!==prevM?m:''),xcell('B'+n,30,d),xcell('C'+n,31,e.place),xcell('D'+n,32,e.mode==='piece'?'':e.start),xcell('E'+n,32,e.mode==='piece'?'':e.end),xcell('F'+n,33,c.restText||''),xcell('G'+n,34,hours),xcell('H'+n,30,e.overtime||''),xcell('I'+n,30,rate),xcell('J'+n,34,J)];
+    prevM=m; out.push(xrow(n,cells)); n++;
+  };
+  const blankRow=(st)=>{out.push(xrow(n,L.split('').map((c,i)=>`<c r="${c}${n}" s="${st[i]}"/>`)));n++;};
+  const stA=[30,30,31,32,32,33,34,30,30,34], stB=[35,35,72,73,73,74,35,35,35,35];
+  work.forEach(dataRow);
+  for(let i=work.length;i<15;i++)blankRow(stB);
+  blankRow([30,30,31,42,42,43,30,30,30,30]);
+  // 攤位計件 header
+  out.push(xrow(n,[xcell('A'+n,64,'攤位計件'),`<c r="B${n}" s="65"/>`,`<c r="C${n}" s="66"/>`,`<c r="D${n}" s="42"/>`,`<c r="E${n}" s="42"/>`,`<c r="F${n}" s="43"/>`,`<c r="G${n}" s="30"/>`,`<c r="H${n}" s="30"/>`,`<c r="I${n}" s="30"/>`,`<c r="J${n}" s="30"/>`])); merges.push(`A${n}:C${n}`); n++;
+  const firstData=4; prevM=null;
+  piece.forEach(dataRow);
+  for(let i=piece.length;i<3;i++)blankRow(stA);
+  blankRow([30,30,31,42,42,43,31,31,31,31]);
+  blankRow([31,31,31,42,42,43,46,46,46,46]);
+  const lastData=n-1;
+  out.push(xrow(n,[xcell('A'+n,61,'備註:'),`<c r="B${n}" s="61"/>`,`<c r="C${n}" s="61"/>`,`<c r="D${n}" s="61"/>`,`<c r="E${n}" s="61"/>`,`<c r="F${n}" s="62"/>`,`<c r="G${n}" s="47"/>`,`<c r="H${n}" s="48"/>`,`<c r="I${n}" s="48"/>`,`<c r="J${n}" s="49"/>`])); merges.push(`A${n}:F${n}`); n++;
+  let total=0; rows.forEach(e=>{total+=compute(e).amountNum;});
+  out.push(xrow(n,[xcell('A'+n,57,'*務必附上簽單聯核對工程用*'),`<c r="B${n}" s="57"/>`,`<c r="C${n}" s="57"/>`,`<c r="D${n}" s="57"/>`,`<c r="E${n}" s="57"/>`,`<c r="F${n}" s="58"/>`,`<c r="G${n}" s="50"/>`,xcell('H'+n,63,'總計金額:='),`<c r="I${n}" s="63"/>`,xcell('J'+n,55,{f:`SUM(J${firstData}:J${lastData})`,v:total})])); merges.push(`A${n}:F${n}`,`H${n}:I${n}`); n++;
+  out.push(xrow(n,[xcell('A'+n,57,'審核人員:'),`<c r="B${n}" s="57"/>`,`<c r="C${n}" s="57"/>`,`<c r="D${n}" s="57"/>`,`<c r="E${n}" s="57"/>`,`<c r="F${n}" s="58"/>`,`<c r="G${n}" s="51"/>`,`<c r="H${n}" s="52"/>`,`<c r="I${n}" s="52"/>`,`<c r="J${n}" s="53"/>`])); merges.push(`A${n}:F${n}`); n++;
+  const mergeXml=`<mergeCells count="${merges.length}">`+merges.map(m=>`<mergeCell ref="${m}"/>`).join('')+'</mergeCells>';
+  return XLSX_SHEET_HEAD+'<sheetData>'+out.join('')+'</sheetData>'+XLSX_SHEET_TAIL.replace('__MERGES__',mergeXml);
+}
+/* minimal ZIP (stored) */
+const CRC_T=(()=>{const t=new Uint32Array(256);for(let i=0;i<256;i++){let c=i;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[i]=c>>>0;}return t;})();
+function crc32(b){let c=0xFFFFFFFF;for(let i=0;i<b.length;i++)c=CRC_T[(c^b[i])&255]^(c>>>8);return (c^0xFFFFFFFF)>>>0;}
+function makeZip(files){
+  const enc=new TextEncoder(); const parts=[]; const cds=[]; let off=0;
+  const u16=v=>[v&255,(v>>8)&255], u32=v=>[v&255,(v>>8)&255,(v>>16)&255,(v>>>24)&255];
+  for(const [name,text] of files){
+    const nb=enc.encode(name), data=(text instanceof Uint8Array)?text:enc.encode(text), crc=crc32(data);
+    const hdr=new Uint8Array([0x50,0x4b,3,4,...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0),...u32(crc),...u32(data.length),...u32(data.length),...u16(nb.length),...u16(0)]);
+    parts.push(hdr,nb,data);
+    cds.push(new Uint8Array([0x50,0x4b,1,2,...u16(20),...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0),...u32(crc),...u32(data.length),...u32(data.length),...u16(nb.length),...u16(0),...u16(0),...u16(0),...u16(0),...u32(0),...u32(off)]),nb);
+    off+=hdr.length+nb.length+data.length;
+  }
+  const cdStart=off; let cdLen=0; cds.forEach(c=>cdLen+=c.length);
+  const end=new Uint8Array([0x50,0x4b,5,6,...u16(0),...u16(0),...u16(files.length),...u16(files.length),...u32(cdLen),...u32(cdStart),...u16(0)]);
+  return new Blob([...parts,...cds,end],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+}
+function b64bytes(dataUrl){const b=atob(dataUrl.split(',')[1]);const u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u;}
+function buildPhotoSheet(ym){
+  const list=photoList(ym); if(!list.length)return null; const r=roc(ym);
+  const EMU=9525, MAXW=640, ROWPX=20; let row=0; const rowsXml=[], anchors=[], rels=[], media=[];
+  const cap=(n,t)=>rowsXml.push(`<row r="${n}"><c r="A${n}" t="inlineStr"><is><t xml:space="preserve">${xesc(t)}</t></is></c></row>`);
+  cap(++row,`${r.y}年${r.m}月 照片備註`); row++;
+  list.forEach((p,k)=>{
+    const d=Number(p.e.date.slice(8)); cap(++row,`${r.m}/${d}　${p.e.place}　照片${p.i+1}`);
+    const sc=Math.min(1,MAXW/p.m.w), w=Math.round(p.m.w*sc), h=Math.round(p.m.h*sc);
+    const id=k+1;
+    anchors.push(`<xdr:oneCellAnchor><xdr:from><xdr:col>0</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${row+1}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from><xdr:ext cx="${w*EMU}" cy="${h*EMU}"/><xdr:pic><xdr:nvPicPr><xdr:cNvPr id="${id+1}" name="照片 ${id}"/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr><xdr:blipFill><a:blip r:embed="rId${id}"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill><xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${w*EMU}" cy="${h*EMU}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic><xdr:clientData/></xdr:oneCellAnchor>`);
+    rels.push(`<Relationship Id="rId${id}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image${id}.jpeg"/>`);
+    media.push([`xl/media/image${id}.jpeg`,b64bytes(p.m.data)]);
+    row+=Math.ceil(h/ROWPX)+3;
+  });
+  const sheet=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetFormatPr defaultRowHeight="15"/><cols><col min="1" max="1" width="90" customWidth="1"/></cols><sheetData>${rowsXml.join('')}</sheetData><pageMargins left="0.4" right="0.4" top="0.5" bottom="0.5" header="0.3" footer="0.3"/><pageSetup paperSize="9" orientation="portrait" fitToWidth="1" fitToHeight="0"/><drawing r:id="rId1"/></worksheet>`;
+  const drawing=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">${anchors.join('')}</xdr:wsDr>`;
+  const drawingRels=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${rels.join('')}</Relationships>`;
+  const sheetRels=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/></Relationships>`;
+  return {sheet,drawing,drawingRels,sheetRels,media};
+}
+function buildXlsx(ym){
+  const ph=buildPhotoSheet(ym);
+  const ct=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${ph?'<Default Extension="jpeg" ContentType="image/jpeg"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>':''}</Types>`;
+  const rels=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`;
+  const wb=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><bookViews><workbookView xWindow="0" yWindow="0" windowWidth="28800" windowHeight="11760"/></bookViews><sheets><sheet name="工時表" sheetId="1" r:id="rId1"/>${ph?'<sheet name="照片" sheetId="2" r:id="rId4"/>':''}</sheets><calcPr calcId="162913" fullCalcOnLoad="1"/></workbook>`;
+  const wbrels=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="theme/theme1.xml"/>${ph?'<Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/>':''}</Relationships>`;
+  const files=[['[Content_Types].xml',ct],['_rels/.rels',rels],['xl/workbook.xml',wb],['xl/_rels/workbook.xml.rels',wbrels],['xl/styles.xml',XLSX_STYLES],['xl/theme/theme1.xml',XLSX_THEME],['xl/worksheets/sheet1.xml',buildXlsxSheet(ym)]];
+  if(ph)files.push(['xl/worksheets/sheet2.xml',ph.sheet],['xl/worksheets/_rels/sheet2.xml.rels',ph.sheetRels],['xl/drawings/drawing1.xml',ph.drawing],['xl/drawings/_rels/drawing1.xml.rels',ph.drawingRels],...ph.media);
+  return makeZip(files);
+}
+async function downloadXlsx(){
+  const r=roc(view); const S=state.settings; const name=`${S.name}_${r.y}年${r.m}月_工時表.xlsx`;
+  await preloadPhotos(view); const blob=buildXlsx(view);
+  try{ const f=new File([blob],name,{type:blob.type}); if(navigator.share&&navigator.canShare&&navigator.canShare({files:[f]})){ await navigator.share({files:[f],title:name}); return; } }catch(e){ if(e&&e.name==='AbortError')return; }
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);
+}
+$('reportXlsx').addEventListener('click',downloadXlsx);
+
+/* ---------- cloud sync (Google Sheet via Apps Script) ---------- */
+let syncTimer=null, syncBusy=false;
+function syncCfg(){const c=state.sync||{};return (c.url&&c.token)?c:null;}
+function syncRows(){
+  return state.entries.filter(e=>!e.deleted).sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start)).map(e=>{const c=compute(e);return [e.stmt,e.date,e.tag==='other'?'其他雇主':'公司',e.place,e.mode==='piece'?'計件':e.mode==='flat'?'固定':'時薪',e.start,e.end,c.restText,c.hoursText,c.rateText,c.amountNum,e.overtime||'',(e.photos||[]).length,e.id];});
+}
+function scheduleSync(){ if(!syncCfg())return; clearTimeout(syncTimer); syncTimer=setTimeout(()=>syncPush(false),2500); }
+async function syncPush(manual){
+  const c=syncCfg(); if(!c||syncBusy)return; if(!navigator.onLine){renderSyncInfo('離線中，等有網路再傳');return;}
+  syncBusy=true; renderSyncInfo('同步中…');
+  try{
+    const payload={token:c.token,action:'push',state:{settings:state.settings,entries:state.entries,lastChangeAt:state.lastChangeAt,appVersion:APP_VERSION},rows:syncRows(),header:['結算月','日期','歸類','施工地點','計價','起','止','休息','總時數','單價','申請金額','加班時段','照片數','id']};
+    const r=await fetch(c.url,{method:'POST',body:JSON.stringify(payload)}); const j=await r.json();
+    if(!j.ok)throw new Error(j.error||'server');
+    state.sync=Object.assign({},state.sync,{lastPushAt:Date.now(),lastError:''}); state.syncDirty=false;
+    try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}
+    renderSyncInfo(); if(manual)toast('已同步到 Google Sheet');
+  }catch(e){ state.sync=Object.assign({},state.sync,{lastError:String(e.message||e)}); try{localStorage.setItem(KEY,JSON.stringify(state));}catch(_){} renderSyncInfo(); if(manual)toast('同步失敗：'+(e.message||e)); }
+  syncBusy=false;
+}
+async function syncPull(){
+  const c=syncCfg(); if(!c){toast('先填同步網址和密碼');return;}
+  if(!confirm('要用 Google Sheet 上的資料取代這支手機的紀錄嗎？（照片不受影響）'))return;
+  renderSyncInfo('下載中…');
+  try{
+    const r=await fetch(c.url+'?token='+encodeURIComponent(c.token)+'&action=pull&t='+Date.now()); const j=await r.json();
+    if(!j.ok||!j.state||!Array.isArray(j.state.entries))throw new Error(j.error||'雲端沒有資料');
+    const keep=state.sync; state=Object.assign(defaults(),{settings:Object.assign(defaults().settings,j.state.settings||{}),entries:j.state.entries,sample:false,sync:keep,lastChangeAt:j.state.lastChangeAt||Date.now()});
+    state.syncDirty=false; try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}
+    view=latestStmt()||view; closeSheets(); render(); toast('已從 Google Sheet 還原 '+state.entries.filter(e=>!e.deleted).length+' 筆');
+  }catch(e){ renderSyncInfo(); toast('還原失敗：'+(e.message||e)); }
+}
+function renderSyncInfo(msg){
+  const el=$('syncInfo'); if(!el)return; const c=state.sync||{};
+  const ob=$('btnOpenSheet'); if(ob){ob.hidden=!c.sheetUrl; if(c.sheetUrl)ob.href=c.sheetUrl;}
+  if(msg){el.textContent=msg;return;}
+  if(!syncCfg()){el.textContent='還沒設定。設定好之後每次新增／修改都會自動背景傳到 Google Sheet；沒網路會先排隊。';return;}
+  let t=c.lastPushAt?'上次同步：'+new Date(c.lastPushAt).toLocaleString('zh-TW'):'還沒同步過';
+  if(state.syncDirty)t+='（有變更還沒傳）'; if(c.lastError)t+='　上次錯誤：'+c.lastError;
+  el.textContent=t;
+}
+$('btnFeedback').addEventListener('click',()=>{$('fbName').value=$('fbName').value||state.settings.name||'';$('fbText').value='';closeSheets();openSheet('feedbackSheet');setTimeout(()=>$('fbText').focus(),250);});
+$('fbCancel').addEventListener('click',closeSheets);
+$('fbSend').addEventListener('click',async()=>{
+  const text=$('fbText').value.trim(); if(!text){toast('先寫一點內容');return;}
+  const c=syncCfg(); if(!c){toast('還沒連上 Google Sheet，先請 Yoona 給你同步連結');return;}
+  $('fbSend').disabled=true;
+  try{
+    const ctx=$('fbAttach').checked?monthEntries(view).map(e=>{const k=compute(e);return `${e.date} ${e.place} ${e.start||''}-${e.end||''} ${k.hoursText||''} ${k.rateText||''} =${k.amountText||'待補'}${e.tag==='other'?'（其他雇主）':''}`;}).join('\n'):'';
+    const r=await fetch(c.url,{method:'POST',body:JSON.stringify({token:c.token,action:'feedback',name:$('fbName').value.trim(),text,month:view,appVersion:APP_VERSION,ua:navigator.userAgent,context:ctx})});
+    const j=await r.json(); if(!j.ok)throw new Error(j.error||'server');
+    closeSheets(); toast('已送出，Yoona 會看到');
+  }catch(e){toast('送不出去：'+(e.message||e));}
+  $('fbSend').disabled=false;
+});
+$('btnSyncNow').addEventListener('click',()=>{state.sync=Object.assign({},state.sync||{},{url:$('sSyncUrl').value.trim(),token:$('sSyncToken').value.trim()});try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){} state.syncDirty=true; syncPush(true);});
+$('btnSyncPull').addEventListener('click',()=>{state.sync=Object.assign({},state.sync||{},{url:$('sSyncUrl').value.trim(),token:$('sSyncToken').value.trim()});syncPull();});
+window.addEventListener('online',()=>{if(state.syncDirty)scheduleSync();});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&state.syncDirty)scheduleSync();});
+// 一鍵設定：網址帶 #sync=base64(url|token)
+(function(){try{const m=location.hash.match(/#sync=([A-Za-z0-9+/=_-]+)/);if(m){const dec=decodeURIComponent(escape(atob(m[1].replace(/-/g,'+').replace(/_/g,'/'))));const [url,token,sheetUrl]=dec.split('|');if(url&&token){state.sync=Object.assign({},state.sync||{},{url,token,sheetUrl:sheetUrl||''});state.syncDirty=true;try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){} history.replaceState(null,'',location.pathname);setTimeout(()=>{toast('已連上 Google Sheet 同步');syncPush(true);},600);}}}catch(e){}})();
+if(state.syncDirty)setTimeout(()=>syncPush(false),1500);
 
 /* ---------- file backup ---------- */
 function backupName(){const d=new Date();return '工時本備份_'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'.json';}
