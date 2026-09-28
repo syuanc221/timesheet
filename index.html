@@ -161,6 +161,11 @@ textarea.big:focus{outline:none;border-color:var(--ink);background:#fff}
 .paper tr.total td{font-weight:700}
 .paper .pfoot{margin-top:14px;font-size:13px;display:flex;justify-content:space-between;align-items:flex-start}
 .paper .pfoot .total{font-weight:700}
+.paper .pname.big{font-size:26px;letter-spacing:.3em;margin-bottom:10px}
+.paper tr.sec td{height:28px}
+.paper .pfoot2{margin-top:12px;font-size:13px;line-height:1.9}
+.paper .pfoot2 .rowx{display:flex;justify-content:space-between}
+.paper .pfoot2 .total{font-weight:700;padding-right:4px}
 .reportnote{max-width:794px;margin:12px auto 0;font-size:12px;color:var(--muted)}
 
 @media print{
@@ -322,7 +327,7 @@ textarea.big:focus{outline:none;border-color:var(--ink);background:#fff}
 <script>
 (function(){
 const KEY='zilang-timesheet-v1';
-const APP_VERSION=13;
+const APP_VERSION=14;
 const $=id=>document.getElementById(id);
 const pad=n=>String(n).padStart(2,'0');
 const today=new Date();
@@ -334,9 +339,9 @@ let editing=null, mode='hour', tag='';
 
 function isoToday(){return today.getFullYear()+'-'+pad(today.getMonth()+1)+'-'+pad(today.getDate());}
 function latestStmt(){return state.entries.map(e=>e.stmt).sort().pop();}
-function defaults(){return {settings:{name:'子良',dayRate:260,nightRate:310,flatRate:1500,pieceRate:70,minHours:4,payDay:10,otherKeys:'凱哥,傑哥,爸,偉謙,璦美,路寬,星光',nightFrom:22,nightTo:6,otherRates:'星光=300/350@22-7'},entries:[],sample:false};}
+function defaults(){return {settings:{name:'子良',dayRate:260,nightRate:310,flatRate:1500,pieceRate:70,minHours:4,payDay:10,otherKeys:'凱哥,傑哥,爸,偉謙,璦美,路寬,星光,代調,父子,裕隆城',nightFrom:22,nightTo:6,otherRates:'星光=300/350@22-7'},entries:[],sample:false};}
 function load(){
-  try{const raw=localStorage.getItem(KEY); if(raw){const s=JSON.parse(raw); const st=Object.assign(defaults().settings,s.settings||{}); if(st.otherRates==='星光=300/350')st.otherRates='星光=300/350@22-7'; (s.entries||[]).forEach(e=>{if(Number(e.night)>24){e.nightRate=e.night;e.night='';} if(e.tag==='other'&&e.rate&&Number(e.rate)===st.dayRate)e.rate='';}); return Object.assign(defaults(),s,{settings:st});}}catch(e){}
+  try{const raw=localStorage.getItem(KEY); if(raw){const s=JSON.parse(raw); const st=Object.assign(defaults().settings,s.settings||{}); if(st.otherRates==='星光=300/350')st.otherRates='星光=300/350@22-7'; if(!(s.settings&&s.settings.kwV>=14)){const have=String(st.otherKeys||'').split(/[,，\s]+/).filter(Boolean); ['代調','父子','裕隆城'].forEach(k=>{if(!have.includes(k))have.push(k);}); st.otherKeys=have.join(','); st.kwV=14;} (s.entries||[]).forEach(e=>{if(Number(e.night)>24){e.nightRate=e.night;e.night='';} if(e.tag==='other'&&e.rate&&Number(e.rate)===st.dayRate)e.rate='';}); return Object.assign(defaults(),s,{settings:st});}}catch(e){}
   return defaults();
 }
 function save(){state.lastChangeAt=Date.now();try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}
@@ -538,7 +543,7 @@ $('nextM').addEventListener('click',()=>{view=shift(view,1);render();});
 /* settings */
 $('btnSettings').addEventListener('click',()=>{const S=state.settings;$('sName').value=S.name;$('sDay').value=S.dayRate;$('sNight').value=S.nightRate;$('sFlat').value=S.flatRate;$('sPiece').value=S.pieceRate;$('sMin').value=S.minHours;$('sPay').value=S.payDay;$('sOther').value=S.otherKeys||'';$('sOtherRates').value=S.otherRates||'';$('sNF').value=S.nightFrom??22;$('sNT').value=S.nightTo??6;renderTrash();openSheet('settingsSheet');});
 $('setCancel').addEventListener('click',closeSheets);
-$('setSave').addEventListener('click',()=>{state.settings={name:$('sName').value.trim()||'工時',dayRate:Number($('sDay').value)||260,nightRate:Number($('sNight').value)||310,flatRate:Number($('sFlat').value)||1500,pieceRate:Number($('sPiece').value)||70,minHours:Number($('sMin').value)||0,payDay:Number($('sPay').value)||10,otherKeys:$('sOther').value.trim(),otherRates:$('sOtherRates').value.trim(),nightFrom:Number($('sNF').value)||22,nightTo:Number($('sNT').value)||6};save();closeSheets();render();});
+$('setSave').addEventListener('click',()=>{state.settings={name:$('sName').value.trim()||'工時',dayRate:Number($('sDay').value)||260,nightRate:Number($('sNight').value)||310,flatRate:Number($('sFlat').value)||1500,pieceRate:Number($('sPiece').value)||70,minHours:Number($('sMin').value)||0,payDay:Number($('sPay').value)||10,otherKeys:$('sOther').value.trim(),otherRates:$('sOtherRates').value.trim(),nightFrom:Number($('sNF').value)||22,nightTo:Number($('sNT').value)||6,kwV:14};save();closeSheets();render();});
 $('btnExport').addEventListener('click',async()=>{const txt=JSON.stringify(state);try{await navigator.clipboard.writeText(txt);$('btnExport').textContent='已複製，貼到 LINE 記事本存好';}catch(e){window.prompt('全選複製這段文字：',txt);}setTimeout(()=>$('btnExport').textContent='改用複製文字的方式備份',2500);});
 $('btnImport').addEventListener('click',()=>{const txt=window.prompt('貼上之前備份的內容：');if(!txt)return;try{const s=JSON.parse(txt);if(!Array.isArray(s.entries))throw 0;state=Object.assign(defaults(),s);state.sample=false;save();view=latestStmt()||view;closeSheets();render();}catch(e){alert('這段內容不是有效的備份。');}});
 $('btnWipe').addEventListener('click',()=>{
@@ -664,22 +669,40 @@ $('impSave').addEventListener('click',()=>{
 });
 
 /* ---------- report ---------- */
+function paperRow(e,showM){
+  const c=compute(e); const m=Number(e.date.slice(5,7)), d=Number(e.date.slice(8));
+  return `<tr><td class="r">${showM?m:''}</td><td class="r">${d}</td><td class="l">${esc(e.place)}</td><td class="r">${e.start}</td><td class="r">${e.end}</td><td class="l">${esc(c.restText)}</td><td class="r">${esc(c.hoursText)}</td><td class="l">${esc(e.overtime)}</td><td class="r">${esc(c.rateText)}</td><td class="r">${esc(c.amountText)}</td></tr>`;
+}
+const NEW_FORMAT_FROM='2026-09'; // 115年9月起：表頭改「X月份」、攤位計件另起一區
 function buildPaper(){
   const rows=monthEntries(view).filter(e=>e.tag!=='other'); const r=roc(view); const S=state.settings;
-  const last=lastDay(view);
-  let html=`<div class="pname">${esc(S.name)}</div><div class="prange">${r.y}年　${r.m}月　1日　至　${r.m}月　${last}日</div>`;
-  html+=`<table><colgroup><col style="width:5%"><col style="width:5%"><col style="width:25%"><col style="width:9%"><col style="width:9%"><col style="width:6%"><col style="width:10%"><col style="width:9%"><col style="width:9.5%"><col style="width:12.5%"></colgroup>
-  <thead><tr><th>月</th><th>日</th><th>施工地點 / 展別</th><th>出勤時間<br>起</th><th>出勤時間<br>止</th><th>休息</th><th>總時數</th><th>加班時數<br>段</th><th>單價</th><th>申請金額</th></tr></thead><tbody>`;
-  let prevM=null, totalH=0, totalA=0;
-  rows.forEach(e=>{
-    const c=compute(e); const m=Number(e.date.slice(5,7)), d=Number(e.date.slice(8));
-    totalH+=c.hoursNum; totalA+=c.amountNum;
-    html+=`<tr><td class="r">${m!==prevM?m:''}</td><td class="r">${d}</td><td class="l">${esc(e.place)}</td><td class="r">${e.start}</td><td class="r">${e.end}</td><td class="l">${esc(c.restText)}</td><td class="r">${esc(c.hoursText)}</td><td class="l">${esc(e.overtime)}</td><td class="r">${esc(c.rateText)}</td><td class="r">${esc(c.amountText)}</td></tr>`;
-    prevM=m;
-  });
-  for(let i=rows.length;i<12;i++)html+='<tr>'+'<td></td>'.repeat(10)+'</tr>';
-  html+=`</tbody></table>`;
-  html+=`<div class="pfoot"><span>備註:<br>*務必附上簽單聯核對工程用*審核人員:</span><span class="total">總計金額:＝ ${totalA.toLocaleString('zh-TW')}</span></div>`;
+  const last=lastDay(view); const isNew=view>=NEW_FORMAT_FROM;
+  const cols=`<colgroup><col style="width:5%"><col style="width:5%"><col style="width:25%"><col style="width:9%"><col style="width:9%"><col style="width:6%"><col style="width:10%"><col style="width:9%"><col style="width:9.5%"><col style="width:12.5%"></colgroup>`;
+  const head=`<thead><tr><th>月</th><th>日</th><th>施工地點 / 展別</th><th>出勤時間<br>起</th><th>出勤時間<br>止</th><th>休息</th><th>總時數</th><th>加班時數<br>段</th><th>單價</th><th>申請金額</th></tr></thead>`;
+  const blank=n=>'<tr>'+'<td></td>'.repeat(10)+'</tr>';
+  let html, totalA=0;
+  rows.forEach(e=>{totalA+=compute(e).amountNum;});
+  const totalTxt=totalA.toLocaleString('zh-TW');
+  if(isNew){
+    const work=rows.filter(e=>e.mode!=='piece'), piece=rows.filter(e=>e.mode==='piece');
+    html=`<div class="pname big">${esc(S.name)}</div><div class="prange">${r.y}年${r.m}月份</div><table>${cols}${head}<tbody>`;
+    let prevM=null;
+    work.forEach(e=>{const m=e.date.slice(5,7); html+=paperRow(e,m!==prevM); prevM=m;});
+    for(let i=work.length;i<16;i++)html+=blank();
+    html+=`<tr class="sec"><td colspan="3" class="l">攤位計件</td>${'<td></td>'.repeat(7)}</tr>`;
+    prevM=null;
+    piece.forEach(e=>{const m=e.date.slice(5,7); html+=paperRow(e,m!==prevM); prevM=m;});
+    for(let i=piece.length;i<5;i++)html+=blank();
+    html+=`</tbody></table>`;
+    html+=`<div class="pfoot2"><div>備註:</div><div class="rowx"><span>*務必附上簽單聯核對工程用*</span><span class="total">總計金額:＝ ${totalTxt}</span></div><div>審核人員:</div></div>`;
+  }else{
+    html=`<div class="pname">${esc(S.name)}</div><div class="prange">${r.y}年　${r.m}月　1日　至　${r.m}月　${last}日</div><table>${cols}${head}<tbody>`;
+    let prevM=null;
+    rows.forEach(e=>{const m=e.date.slice(5,7); html+=paperRow(e,m!==prevM); prevM=m;});
+    for(let i=rows.length;i<12;i++)html+=blank();
+    html+=`</tbody></table>`;
+    html+=`<div class="pfoot"><span>備註:<br>*務必附上簽單聯核對工程用*審核人員:</span><span class="total">總計金額:＝ ${totalTxt}</span></div>`;
+  }
   $('paper').innerHTML=html;
   $('reportTitle').textContent=r.y+'年'+r.m+'月 月結表';
   document.title=S.name+' '+r.y+'年'+r.m+'月 工時表';
