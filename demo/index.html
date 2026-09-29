@@ -378,7 +378,7 @@ textarea.big:focus{outline:none;border-color:var(--ink);background:#fff}
 <script>
 (function(){
 const KEY='zl-demo-v1';
-const APP_VERSION=17;
+const APP_VERSION=18;
 const $=id=>document.getElementById(id);
 const pad=n=>String(n).padStart(2,'0');
 const today=new Date();
@@ -471,7 +471,7 @@ function monthEntries(ym){return state.entries.filter(e=>e.stmt===ym&&!e.deleted
 function daysUntil(y,m,d){const t=new Date(today.getFullYear(),today.getMonth(),today.getDate());return Math.round((new Date(y,m-1,d)-t)/86400000);}
 
 function render(){
-  $('brandName').textContent=state.settings.name||'工時';
+  $('brandName').textContent='ZL';
   const r=roc(view);
   $('monthTitle').textContent=r.y+'年'+r.m+'月';
   const rows=monthEntries(view);
