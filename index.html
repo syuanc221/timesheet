@@ -1,5 +1,5 @@
-<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="工時本"></head><body>
-<title>子良工時本</title>
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="ZL 工時本"></head><body>
+<title>ZL 工時本</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap">
 <style>
 :root{
@@ -205,7 +205,7 @@ textarea.big:focus{outline:none;border-color:var(--ink);background:#fff}
 <div class="statusbg"></div>
 <div id="app">
   <div class="topbar">
-    <h1><span id="brandName">子良</span><small>工時本 <span id="verTag"></span></small></h1>
+    <h1><span id="brandName">ZL</span><small>工時本 <span id="verTag"></span></small></h1>
     <div style="display:flex;gap:8px">
     <button class="round" id="btnBackupTop" aria-label="備份"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg></button>
     <button class="round" id="btnSettings" aria-label="設定"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
@@ -348,7 +348,7 @@ textarea.big:focus{outline:none;border-color:var(--ink);background:#fff}
 <!-- feedback -->
 <div class="sheet" id="feedbackSheet" role="dialog" aria-label="回報">
   <header><button class="cancel" id="fbCancel">取消</button><h2>回報問題／想改哪裡</h2><button id="fbSend">送出</button></header>
-  <div class="field"><label>怎麼稱呼</label><input type="text" id="fbName" placeholder="子良"></div>
+  <div class="field"><label>怎麼稱呼</label><input type="text" id="fbName" placeholder="ZL"></div>
   <div class="field"><label>想說什麼（哪裡怪怪的、想加什麼、怎麼算比較對…）</label><textarea class="big" id="fbText" rows="6" placeholder="例：9/3 走道那筆金額好像不對，應該是…"></textarea></div>
   <label style="display:flex;gap:8px;align-items:center;font-size:13px;margin:-4px 0 12px"><input type="checkbox" id="fbAttach" checked style="width:18px;height:18px"> 一起附上目前這個月的紀錄，方便對照</label>
   <p class="hint">送出後會存到 Google Sheet 的「回報」分頁，Yoona 看到就會處理。</p>
@@ -378,7 +378,7 @@ textarea.big:focus{outline:none;border-color:var(--ink);background:#fff}
 <script>
 (function(){
 const KEY='zilang-timesheet-v1';
-const APP_VERSION=17;
+const APP_VERSION=18;
 const $=id=>document.getElementById(id);
 const pad=n=>String(n).padStart(2,'0');
 const today=new Date();
@@ -470,7 +470,7 @@ function monthEntries(ym){return state.entries.filter(e=>e.stmt===ym&&!e.deleted
 function daysUntil(y,m,d){const t=new Date(today.getFullYear(),today.getMonth(),today.getDate());return Math.round((new Date(y,m-1,d)-t)/86400000);}
 
 function render(){
-  $('brandName').textContent=state.settings.name||'工時';
+  $('brandName').textContent='ZL';
   const r=roc(view);
   $('monthTitle').textContent=r.y+'年'+r.m+'月';
   const rows=monthEntries(view);
@@ -774,7 +774,7 @@ function buildPaper(){
   document.title=S.name+' '+r.y+'年'+r.m+'月 工時表';
 }
 $('btnReport').addEventListener('click',async()=>{await preloadPhotos(view);buildPaper();$('report').classList.add('open');});
-$('reportClose').addEventListener('click',()=>{$('report').classList.remove('open');document.title='子良工時本';});
+$('reportClose').addEventListener('click',()=>{$('report').classList.remove('open');document.title='ZL 工時本';});
 $('reportPrint').addEventListener('click',()=>{
   buildPaper();
   if(window.top!==window.self){alert('這個畫面被包在另一個頁面裡，iPhone 不會跳出列印。請用 Safari 直接打開網址（或從主畫面圖示開）再按一次。');return;}
