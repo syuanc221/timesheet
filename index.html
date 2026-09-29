@@ -11,6 +11,7 @@
   color-scheme:light;
 }
 *{box-sizing:border-box}
+[hidden]{display:none !important}
 body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
 button,input,select{font:inherit;color:inherit}
 button{cursor:pointer;background:none;border:0;padding:0}
@@ -52,6 +53,9 @@ button{cursor:pointer;background:none;border:0;padding:0}
 
 .backupbar{margin-top:10px;padding:14px 16px;border-radius:var(--r);background:var(--accent-soft);color:#7A4400;font-size:13px;display:flex;flex-direction:column;gap:10px}
 .backupbar .btn{height:44px;font-size:14px;width:100%}
+#syncPill{display:inline-flex;align-items:center;gap:5px}
+#syncPill.warn{background:#FFB35C;color:#111}
+#syncPill svg{width:13px;height:13px}
 .section{display:flex;align-items:baseline;justify-content:space-between;margin:24px 0 10px}
 .section h2{margin:0;font-size:17px;font-weight:700}
 .section span{font-size:12px;color:var(--muted)}
@@ -159,10 +163,10 @@ textarea.big:focus{outline:none;border-color:var(--ink);background:#fff}
 /* ---------- report ---------- */
 #report{display:none;position:fixed;inset:0;z-index:30;background:var(--tile);overflow:auto}
 #report.open{display:block}
-.reportbar{position:sticky;top:0;z-index:2;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:12px 20px}
-.reportbar h2{margin:0;font-size:16px}
-.reportbar .acts{display:flex;gap:8px}
-.reportbar .acts button{height:40px;padding:0 16px;border-radius:999px;font-weight:700;background:var(--tile)}
+.reportbar{position:sticky;top:0;z-index:2;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:8px;padding:calc(10px + env(safe-area-inset-top)) 16px 10px}
+.reportbar h2{margin:0;font-size:15px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.reportbar .acts{display:flex;gap:6px;flex-shrink:0}
+.reportbar .acts button{height:38px;padding:0 12px;border-radius:999px;font-weight:700;font-size:14px;white-space:nowrap;background:var(--tile)}
 .reportbar .acts .go{background:var(--black);color:#fff}
 .reportwrap{padding:18px;overflow-x:auto}
 .paper{background:#fff;color:#000;width:794px;min-height:500px;margin:0 auto;padding:36px 40px;font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.10)}
@@ -223,6 +227,7 @@ textarea.big:focus{outline:none;border-color:var(--ink);background:#fff}
       <div><div class="k">結單</div><div class="v num" id="closeDate"></div></div>
       <div><div class="k">發薪</div><div class="v num" id="payDate"></div></div>
       <div class="pill quiet" id="countdown"></div>
+      <button type="button" class="pill quiet" id="syncPill" hidden></button>
     </div>
   </div>
 
@@ -365,15 +370,15 @@ textarea.big:focus{outline:none;border-color:var(--ink);background:#fff}
 
 <!-- report -->
 <div id="report">
-  <div class="reportbar"><h2 id="reportTitle">月結表</h2><div class="acts"><button id="reportClose">返回</button><button id="reportXlsx">下載 Excel</button><button class="go" id="reportPrint">存成 PDF</button></div></div>
+  <div class="reportbar"><h2 id="reportTitle">月結表</h2><div class="acts"><button id="reportClose">返回</button><button id="reportXlsx">Excel</button><button class="go" id="reportPrint">PDF</button></div></div>
   <div class="reportwrap"><div class="paper" id="paper"></div></div>
-  <p class="reportnote">iPhone：按「存成 PDF」→ 列印畫面 → 用兩指把預覽放大 → 右上分享 → 儲存到檔案 或 傳到 LINE。</p>
+  <p class="reportnote">iPhone：按「PDF」→ 列印畫面 → 用兩指把預覽放大 → 右上分享 → 儲存到檔案 或 傳到 LINE。</p>
 </div>
 
 <script>
 (function(){
 const KEY='zilang-timesheet-v1';
-const APP_VERSION=16;
+const APP_VERSION=17;
 const $=id=>document.getElementById(id);
 const pad=n=>String(n).padStart(2,'0');
 const today=new Date();
@@ -569,6 +574,7 @@ $('formSave').addEventListener('click',()=>{
   const e=readForm();
   if(state.sample){state.sample=false;state.entries=[];}
   const i=state.entries.findIndex(x=>x.id===e.id);
+  e.updatedAt=Date.now();
   if(i>=0){(state.entries[i].photos||[]).forEach(id=>{if(!e.photos.includes(id))photoDel(id);});state.entries[i]=e;} else state.entries.push(e);
   formPhotos=[];
   save(); view=e.stmt; closeSheets(); render();
@@ -718,7 +724,7 @@ $('impCancel').addEventListener('click',closeSheets);
 $('impSave').addEventListener('click',()=>{
   const good=impRows.filter(r=>!r.warn).map(r=>r.e); if(!good.length)return;
   if(state.sample){state.sample=false;state.entries=[];}
-  state.entries.push(...good); save(); view=$('impStmt').value; closeSheets(); render();
+  good.forEach(e=>e.updatedAt=Date.now()); state.entries.push(...good); save(); view=$('impStmt').value; closeSheets(); render();
 });
 
 /* ---------- report ---------- */
@@ -764,7 +770,7 @@ function buildPaper(){
   }
   photoList(view).forEach(p=>{const d=Number(p.e.date.slice(8)); html+=`<div class="photopage"><div class="pcap">${r.m}/${d}　${esc(p.e.place)}　照片${p.i+1}</div><img src="${p.m.data}" alt=""></div>`;});
   $('paper').innerHTML=html;
-  $('reportTitle').textContent=r.y+'年'+r.m+'月 月結表';
+  $('reportTitle').textContent=r.y+'年'+r.m+'月結表';
   document.title=S.name+' '+r.y+'年'+r.m+'月 工時表';
 }
 $('btnReport').addEventListener('click',async()=>{await preloadPhotos(view);buildPaper();$('report').classList.add('open');});
@@ -921,7 +927,7 @@ function syncRows(){
 }
 function scheduleSync(){ if(!syncCfg())return; clearTimeout(syncTimer); syncTimer=setTimeout(()=>syncPush(false),2500); }
 async function syncPush(manual){
-  const c=syncCfg(); if(!c||syncBusy)return; if(!navigator.onLine){renderSyncInfo('離線中，等有網路再傳');return;}
+  const c=syncCfg(); if(!c||syncBusy)return; if(!navigator.onLine){renderSyncInfo('離線中，等有網路再傳');renderSyncPill();return;}
   syncBusy=true; renderSyncInfo('同步中…');
   try{
     const payload={token:c.token,action:'push',state:{settings:state.settings,entries:state.entries,lastChangeAt:state.lastChangeAt,appVersion:APP_VERSION},rows:syncRows(),header:['結算月','日期','歸類','施工地點','計價','起','止','休息','總時數','單價','申請金額','加班時段','照片數','id']};
@@ -929,8 +935,8 @@ async function syncPush(manual){
     if(!j.ok)throw new Error(j.error||'server');
     state.sync=Object.assign({},state.sync,{lastPushAt:Date.now(),lastError:''}); state.syncDirty=false;
     try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}
-    renderSyncInfo(); if(manual)toast('已同步到 Google Sheet');
-  }catch(e){ state.sync=Object.assign({},state.sync,{lastError:String(e.message||e)}); try{localStorage.setItem(KEY,JSON.stringify(state));}catch(_){} renderSyncInfo(); if(manual)toast('同步失敗：'+(e.message||e)); }
+    renderSyncInfo(); renderSyncPill(); if(manual)toast('已同步到 Google Sheet');
+  }catch(e){ state.sync=Object.assign({},state.sync,{lastError:String(e.message||e)}); try{localStorage.setItem(KEY,JSON.stringify(state));}catch(_){} renderSyncInfo(); renderSyncPill(); if(manual)toast('同步失敗：'+(e.message||e)); }
   syncBusy=false;
 }
 async function syncPull(){
@@ -968,6 +974,7 @@ $('fbSend').addEventListener('click',async()=>{
   }catch(e){toast('送不出去：'+(e.message||e));}
   $('fbSend').disabled=false;
 });
+$('btnOpenSheet').addEventListener('click',ev=>{const u=(state.sync&&state.sync.sheetUrl)||'';if(!u){ev.preventDefault();toast('還沒連上 Google Sheet，先點 Yoona 給的同步連結');return;}ev.preventDefault();const w=window.open(u,'_blank');if(!w)location.href=u;});
 $('btnSyncNow').addEventListener('click',()=>{state.sync=Object.assign({},state.sync||{},{url:$('sSyncUrl').value.trim(),token:$('sSyncToken').value.trim()});try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){} state.syncDirty=true; syncPush(true);});
 $('btnSyncPull').addEventListener('click',()=>{state.sync=Object.assign({},state.sync||{},{url:$('sSyncUrl').value.trim(),token:$('sSyncToken').value.trim()});syncPull();});
 window.addEventListener('online',()=>{if(state.syncDirty)scheduleSync();});
@@ -991,10 +998,28 @@ function renderBackupBar(){
   const bar=$('backupbar'); const n=state.entries.filter(e=>!e.deleted).length;
   const last=state.lastBackupAt||0, days=last?Math.floor((Date.now()-last)/86400000):null;
   const changedSince=(state.lastChangeAt||0)>last;
-  const show=n>0&&changedSince&&(days===null||days>=7);
-  bar.hidden=!show; if(show)$('backupMsg').textContent=days===null?'還沒備份過，建議先備份一份到「檔案」':'已 '+days+' 天沒備份';
+  const cloud=!!syncCfg(); const hasPhotos=state.entries.some(e=>!e.deleted&&e.photos&&e.photos.length);
+  let show=false, msg='';
+  if(cloud){
+    // 紀錄都在雲端了；只有照片不在 Sheet 上，所以有照片時每 30 天提醒一次備份到檔案
+    if(hasPhotos&&changedSince&&(days===null||days>=30)){show=true;msg=days===null?'照片只存在這支手機，建議備份一份到「檔案」（紀錄本身已在雲端）':'照片只存在手機，已 '+days+' 天沒備份到「檔案」';}
+  }else{
+    show=n>0&&changedSince&&(days===null||days>=7);
+    msg=days===null?'還沒備份過，建議先備份一份到「檔案」':'已 '+days+' 天沒備份';
+  }
+  bar.hidden=!show; if(show)$('backupMsg').textContent=msg;
   if($('backupInfo'))$('backupInfo').textContent=last?'上次備份：'+new Date(last).toLocaleString('zh-TW'):'還沒備份過。備份檔會存進 iPhone 的「檔案」app，就算圖示被刪掉也找得回來。';
+  renderSyncPill();
 }
+function renderSyncPill(){
+  const pill=$('syncPill'); if(!pill)return; const c=state.sync||{};
+  if(!syncCfg()){pill.hidden=true;return;}
+  pill.hidden=false;
+  const ico='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18a4 4 0 0 1-.6-7.95A6 6 0 0 1 18 8a4.5 4.5 0 0 1 0 9H7z"/></svg>';
+  if(state.syncDirty){const k=state.entries.filter(e=>(e.updatedAt||0)>(c.lastPushAt||0)).length; pill.className='pill quiet warn'; pill.innerHTML=ico+(k>0?k+' 筆待同步':'待同步')+(navigator.onLine?'':'（離線）');}
+  else{pill.className='pill quiet'; pill.innerHTML=ico+'已同步 '+(c.lastPushAt?new Date(c.lastPushAt).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}):'');}
+}
+$('syncPill').addEventListener('click',()=>{if(state.syncDirty){toast('重新同步中…');syncPush(true);}else toast('紀錄已經在 Google Sheet 上了');});
 $('btnExportFile').addEventListener('click',backupToFile);
 $('btnBackupNow').addEventListener('click',backupToFile);
 $('btnBackupTop').addEventListener('click',backupToFile);
