@@ -1,0 +1,1061 @@
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="ZL 工時本"></head><body>
+<title>ZL 工時本</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ground:#FFFFFF; --tile:#F4F5F7; --tile-2:#ECEEF1; --ink:#111214; --muted:#80868F; --faint:#B4B9C1; --line:#E6E8EC;
+  --black:#111214; --on-black:#FFFFFF; --accent:#FF8A00; --accent-soft:#FFF1E0; --danger:#D64545;
+  --sans:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --mono:"DM Mono","SF Mono",Menlo,Consolas,monospace;
+  --r:18px;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0;padding:0}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
+
+/* ---------- shell ---------- */
+#app{max-width:520px;margin:0 auto;min-height:100dvh;padding:env(safe-area-inset-top) 20px calc(96px + env(safe-area-inset-bottom))}
+.statusbg{position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top);background:var(--ground);z-index:15;pointer-events:none}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:18px 0 4px}
+.topbar h1{font-size:26px;font-weight:700;margin:0;letter-spacing:-.01em;line-height:1.2}
+.topbar h1 small{display:block;font-size:12px;font-weight:400;color:var(--muted);letter-spacing:.08em;margin-top:2px}
+.round{width:42px;height:42px;border-radius:50%;background:var(--tile);display:grid;place-items:center;color:var(--ink);flex-shrink:0}
+.round:active{background:var(--tile-2)}
+.round svg{width:18px;height:18px}
+
+.monthnav{display:flex;align-items:center;justify-content:space-between;margin-top:14px}
+.monthnav .title{font-size:20px;font-weight:700;letter-spacing:.02em}
+.monthnav .title small{font-size:12px;font-weight:400;color:var(--muted);margin-left:6px}
+
+.hero{margin-top:14px;background:var(--black);color:var(--on-black);border-radius:22px;padding:20px 20px 18px}
+.hero .eyebrow{color:rgba(255,255,255,.55)}
+.hero .big{font-size:40px;font-weight:500;line-height:1.1;margin-top:6px;letter-spacing:-.02em}
+.hero .big small{font-size:14px;font-family:var(--sans);font-weight:400;opacity:.6;margin-left:6px;letter-spacing:0}
+.hero .dates{display:flex;gap:22px;margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.14);align-items:flex-end}
+.hero .dates .k{font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:rgba(255,255,255,.5)}
+.hero .dates .v{font-size:16px;font-weight:500;margin-top:2px}
+.hero .pill{margin-left:auto;background:var(--accent);color:#1A1000;font-size:12px;font-weight:700;padding:6px 12px;border-radius:999px;white-space:nowrap}
+.hero .pill.quiet{background:rgba(255,255,255,.14);color:#fff;font-weight:500}
+
+.stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:10px}
+.stat{background:var(--tile);border-radius:var(--r);padding:14px 14px 12px}
+.stat .v{font-size:20px;font-weight:500;line-height:1.1;white-space:nowrap}
+.stat .v small{font-size:12px;font-family:var(--sans);color:var(--muted);margin-left:2px}
+.stat .k{font-size:12px;color:var(--muted);margin-top:4px}
+
+.samplebar{margin-top:10px;padding:12px 16px;border-radius:var(--r);background:var(--accent-soft);color:#7A4400;font-size:13px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.samplebar button{font-weight:700;white-space:nowrap;flex-shrink:0;color:#7A4400;text-decoration:underline;text-underline-offset:3px}
+
+.backupbar{margin-top:10px;padding:14px 16px;border-radius:var(--r);background:var(--accent-soft);color:#7A4400;font-size:13px;display:flex;flex-direction:column;gap:10px}
+.backupbar .btn{height:44px;font-size:14px;width:100%}
+#syncPill{display:inline-flex;align-items:center;gap:5px}
+#syncPill.warn{background:#FFB35C;color:#111}
+#syncPill svg{width:13px;height:13px}
+.section{display:flex;align-items:baseline;justify-content:space-between;margin:24px 0 10px}
+.section h2{margin:0;font-size:17px;font-weight:700}
+.section span{font-size:12px;color:var(--muted)}
+.list{display:flex;flex-direction:column;gap:8px}
+.entry{display:grid;grid-template-columns:46px 1fr auto;gap:12px;align-items:center;background:var(--tile);border-radius:var(--r);padding:14px 16px;text-align:left;width:100%}
+.entry:active{background:var(--tile-2)}
+.entry .date{display:flex;flex-direction:column;align-items:center;line-height:1;background:#fff;border-radius:12px;padding:8px 0;align-self:stretch;justify-content:center}
+.entry .date b{font-size:20px;font-weight:500}
+.entry .date i{font-style:normal;font-size:10px;color:var(--muted);margin-top:4px;font-family:var(--sans)}
+.entry .main{min-width:0}
+.entry .place{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.entry .meta{font-size:12px;color:var(--muted);display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;align-items:center}
+.entry .meta .chip{background:#fff;color:var(--ink);padding:1px 8px;border-radius:999px;font-family:var(--sans);font-size:11px;font-weight:500}
+.entry .amt{text-align:right}
+.entry .amt b{font-size:17px;font-weight:500;display:block}
+.entry .amt i{font-style:normal;font-size:11px;color:var(--muted)}
+.entry.other{opacity:.7}
+.empty{margin:40px 0;text-align:center;color:var(--muted);font-size:14px}
+.empty b{display:block;color:var(--ink);font-size:16px;margin-bottom:6px}
+
+.actionbar{position:fixed;left:0;right:0;bottom:0;padding:10px 20px calc(14px + env(safe-area-inset-bottom));background:linear-gradient(to top,#fff 60%,rgba(255,255,255,0));pointer-events:none}
+.actionbar .inner{max-width:520px;margin:0 auto;display:grid;grid-template-columns:1fr 1.4fr;gap:10px;pointer-events:auto}
+.btn{height:54px;border-radius:999px;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;gap:8px;background:#fff;border:1.5px solid var(--line)}
+.btn.primary{background:var(--black);color:var(--on-black);border-color:var(--black)}
+.btn:active{transform:translateY(1px)}
+.btn svg{width:18px;height:18px}
+
+/* ---------- sheets ---------- */
+.scrim{position:fixed;inset:0;background:rgba(17,18,20,.4);display:none;z-index:20}
+.scrim.open{display:block}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;max-width:520px;margin:0 auto;background:#fff;border-radius:24px 24px 0 0;max-height:92dvh;overflow:auto;transform:translateY(105%);transition:transform .25s ease,max-height .25s ease,border-radius .25s ease;padding:0 20px calc(20px + env(safe-area-inset-bottom))}
+.sheet.open{transform:none}
+.sheet.full{max-height:100dvh;height:100dvh;border-radius:0;padding-top:env(safe-area-inset-top)}
+.sheet header{touch-action:none}
+@media (prefers-reduced-motion:reduce){.sheet{transition:none}}
+.sheet header{position:sticky;top:0;background:#fff;display:flex;align-items:center;justify-content:space-between;padding:18px 0 12px;margin-bottom:12px;z-index:1}
+.sheet header::before{content:"";position:absolute;top:8px;left:50%;width:36px;height:4px;border-radius:2px;background:var(--line);transform:translateX(-50%)}
+.sheet header h2{margin:0;font-size:17px}
+.sheet header button{font-weight:700;font-size:15px;padding:6px 2px}
+.sheet header button.cancel{color:var(--muted);font-weight:500}
+.field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.field label{font-size:12px;color:var(--muted)}
+.field input,.field select{height:46px;border:1.5px solid transparent;border-radius:13px;padding:0 14px;background:var(--tile);width:100%;min-width:0;-webkit-appearance:none;appearance:none}
+.field input:focus,.field select:focus{outline:none;border-color:var(--ink);background:#fff}
+.field input.mono{font-family:var(--mono)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.seg{display:grid;grid-template-columns:1fr 1fr 1fr;background:var(--tile);border-radius:13px;padding:4px;height:46px;gap:4px}
+.seg.two{grid-template-columns:1fr 1fr}
+.seg button{font-weight:500;color:var(--muted);border-radius:10px}
+.seg button.on{background:#fff;color:var(--ink);font-weight:700;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.hint{font-size:12px;color:var(--muted);margin:-4px 0 12px}
+.calc{background:var(--black);color:#fff;border-radius:16px;padding:14px 16px;margin:4px 0 14px;display:grid;grid-template-columns:1fr 1fr;gap:6px 12px}
+.calc .k{font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:rgba(255,255,255,.55)}
+.calc .v{font-size:20px;font-weight:500;margin-top:2px}
+.calc .v small{font-size:11px;color:rgba(255,255,255,.55);font-family:var(--sans);margin-left:4px}
+details{background:var(--tile);border-radius:16px;padding:0 14px;margin-bottom:14px}
+details summary{padding:12px 0;font-size:14px;font-weight:500;cursor:pointer;list-style:none;display:flex;justify-content:space-between}
+details summary::-webkit-details-marker{display:none}
+details summary::after{content:"＋";color:var(--muted)}
+details[open] summary::after{content:"－"}
+details .field input,details .field select{background:#fff}
+details .field:last-child{margin-bottom:14px}
+.danger{color:var(--danger);font-weight:500;width:100%;height:46px;margin-top:4px}
+.settings-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:6px 0 14px}
+.settings-actions .btn{height:46px;font-size:14px}
+.note{font-size:12px;color:var(--muted);line-height:1.6;background:var(--tile);border-radius:14px;padding:12px 14px;margin:0 0 6px}
+.note b{color:var(--ink)}
+
+textarea.big{width:100%;min-height:180px;border:1.5px solid transparent;border-radius:13px;padding:12px 14px;background:var(--tile);font:inherit;font-size:14px;line-height:1.5;resize:vertical}
+textarea.big:focus{outline:none;border-color:var(--ink);background:#fff}
+.preview{display:flex;flex-direction:column;gap:6px;margin:12px 0}
+.preview .prow{display:grid;grid-template-columns:44px 1fr auto;gap:10px;align-items:center;background:var(--tile);border-radius:12px;padding:10px 12px;font-size:13px}
+.preview .prow.bad{background:var(--accent-soft)}
+.preview .prow.other{opacity:.6}
+.preview .prow .d{font-family:var(--mono);color:var(--muted)}
+.preview .prow .m{font-size:11px;color:var(--muted)}
+.preview .prow .a{font-family:var(--mono);text-align:right}
+.chip{background:#fff;color:var(--ink);padding:1px 8px;border-radius:999px;font-size:11px;font-weight:500}
+.chip.warn{background:var(--accent);color:#1A1000}
+.linkbtn{color:var(--ink);font-weight:500;text-decoration:underline;text-underline-offset:3px;font-size:13px}
+.ptr{position:fixed;top:calc(10px + env(safe-area-inset-top));left:50%;transform:translate(-50%,-60px);background:var(--black);color:#fff;font-size:12px;padding:8px 14px;border-radius:999px;z-index:45;transition:transform .15s ease,opacity .15s;opacity:0;pointer-events:none;white-space:nowrap}
+.ptr.show{opacity:1}
+.toast{position:fixed;left:50%;bottom:calc(88px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--black);color:#fff;padding:12px 16px;border-radius:999px;font-size:14px;display:flex;gap:14px;align-items:center;z-index:40;box-shadow:0 8px 24px rgba(0,0,0,.2);white-space:nowrap}
+.toast button{color:#FFB35C;font-weight:700}
+.photos{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 14px}
+.photos .ph{width:72px;height:72px;border-radius:12px;overflow:hidden;background:var(--tile);position:relative;padding:0}
+.photos .ph img{width:100%;height:100%;object-fit:cover;display:block}
+.photos .add{width:72px;height:72px;border-radius:12px;border:1.5px dashed var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--muted);font-size:11px;font-family:var(--sans)}
+.photos .add svg{width:22px;height:22px}
+.entry .meta .chip.ph{display:inline-flex;align-items:center;gap:3px}
+.entry .meta .chip.ph svg{width:11px;height:11px}
+.viewer{position:fixed;inset:0;background:#000;z-index:50;display:none;flex-direction:column}
+.viewer.open{display:flex}
+.viewer .vbar{display:flex;justify-content:space-between;align-items:center;padding:calc(12px + env(safe-area-inset-top)) 16px 12px;color:#fff}
+.viewer .vbar button{color:#fff;font-weight:600;font-size:15px;padding:6px 4px}
+.viewer .vbar button.del{color:#FF6B6B}
+.viewer .vbody{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;display:flex;align-items:center;justify-content:center}
+.viewer .vbody img{max-width:100%;max-height:100%;object-fit:contain}
+.viewer .vcap{color:#bbb;font-size:12px;text-align:center;padding:8px 16px calc(12px + env(safe-area-inset-bottom))}
+.trash{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.trash .trow{display:flex;justify-content:space-between;align-items:center;background:var(--tile);border-radius:12px;padding:10px 12px;font-size:13px;gap:10px}
+.trash .trow span{color:var(--muted);font-size:11px;display:block}
+.trash .trow button{font-weight:700;white-space:nowrap}
+/* ---------- report ---------- */
+#report{display:none;position:fixed;inset:0;z-index:30;background:var(--tile);overflow:auto}
+#report.open{display:block}
+.reportbar{position:sticky;top:0;z-index:2;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:8px;padding:calc(10px + env(safe-area-inset-top)) 16px 10px}
+.reportbar h2{margin:0;font-size:15px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.reportbar .acts{display:flex;gap:6px;flex-shrink:0}
+.reportbar .acts button{height:38px;padding:0 12px;border-radius:999px;font-weight:700;font-size:14px;white-space:nowrap;background:var(--tile)}
+.reportbar .acts .go{background:var(--black);color:#fff}
+.reportwrap{padding:18px;overflow-x:auto}
+.paper{background:#fff;color:#000;width:794px;min-height:500px;margin:0 auto;padding:36px 40px;font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.10)}
+.paper .pname{text-align:center;font-size:18px;letter-spacing:.2em;margin-bottom:14px}
+.paper .prange{text-align:center;font-size:17px;letter-spacing:.35em;margin-bottom:12px}
+.paper table{border-collapse:collapse;width:100%;font-size:13px;table-layout:fixed}
+.paper th,.paper td{border:1px solid #000;padding:2px 4px;height:32px;vertical-align:middle;line-height:1.2}
+.paper th{font-weight:400;text-align:center;font-size:13px}
+.paper td{white-space:normal;word-break:break-all}
+.paper td.r{text-align:right;font-family:Arial,"Helvetica Neue",sans-serif}
+.paper td.l{text-align:left}
+.paper tr.total td{font-weight:700}
+.paper .pfoot{margin-top:14px;font-size:13px;display:flex;justify-content:space-between;align-items:flex-start}
+.paper .pfoot .total{font-weight:700}
+.paper .pname.big{font-size:26px;letter-spacing:.3em;margin-bottom:10px}
+.paper tr.sec td{height:28px}
+.paper .pfoot2{margin-top:12px;font-size:13px;line-height:1.9}
+.paper .pfoot2 .rowx{display:flex;justify-content:space-between}
+.paper .pfoot2 .total{font-weight:700;padding-right:4px}
+.paper .photopage{margin-top:28px;padding-top:20px;border-top:1px dashed #999;page-break-before:always;break-before:page}
+.paper .photopage .pcap{font-size:13px;margin-bottom:8px}
+.paper .photopage img{display:block;max-width:100%;max-height:230mm;margin:0 auto;object-fit:contain}
+.reportnote{max-width:794px;margin:12px auto 0;font-size:12px;color:var(--muted)}
+
+@media print{
+  @page{size:A4 portrait;margin:12mm}
+  .paper .photopage{border-top:0;margin-top:0;padding-top:0}
+  body{background:#fff}
+  #app,.actionbar,.scrim,.sheet,.reportbar,.reportnote,.statusbg,.ptr{display:none !important}
+  #report{display:block !important;position:static;overflow:visible;background:#fff}
+  .reportwrap{padding:0;overflow:visible}
+  .paper{width:auto;box-shadow:none;padding:0;margin:0}
+}
+</style>
+
+<div class="statusbg"></div>
+<div id="app">
+  <div class="topbar">
+    <h1><span id="brandName">ZL</span><small>工時本 <span id="verTag"></span></small></h1>
+    <div style="display:flex;gap:8px">
+    <button class="round" id="btnBackupTop" aria-label="備份"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg></button>
+    <button class="round" id="btnSettings" aria-label="設定"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+    </div>
+  </div>
+
+  <div class="monthnav">
+    <button class="round" id="prevM" aria-label="上個月"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <div class="title"><span id="monthTitle"></span><small>結算月</small></div>
+    <button class="round" id="nextM" aria-label="下個月"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 5l7 7-7 7"/></svg></button>
+  </div>
+
+  <div class="backupbar" id="backupbar" hidden><div id="backupMsg"></div><button class="btn primary" id="btnBackupNow">備份到「檔案」</button></div>
+
+  <div class="hero">
+    <div class="eyebrow">本月向公司申請金額</div>
+    <div class="big num" id="sumAmount">0<small>元</small></div>
+    <div class="dates">
+      <div><div class="k">結單</div><div class="v num" id="closeDate"></div></div>
+      <div><div class="k">發薪</div><div class="v num" id="payDate"></div></div>
+      <div class="pill quiet" id="countdown"></div>
+      <button type="button" class="pill quiet" id="syncPill" hidden></button>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="v num" id="sumDays">0<small>天</small></div><div class="k">出勤</div></div>
+    <div class="stat"><div class="v num" id="sumHours">0<small>h</small></div><div class="k">總時數</div></div>
+    <div class="stat"><div class="v num" id="sumRows">0<small>元</small></div><div class="k">其他雇主</div></div>
+  </div>
+
+
+  <div class="section"><h2>出勤紀錄</h2><button class="linkbtn" id="btnImportText">從記事本匯入</button></div>
+  <div class="list" id="list"></div>
+  <div class="empty" id="empty" hidden><b>這個月還沒有紀錄</b>收工後按「新增一筆」，月底直接匯出。</div>
+</div>
+
+<div class="actionbar"><div class="inner">
+  <button class="btn" id="btnReport"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h8"/></svg>月結表</button>
+  <button class="btn primary" id="btnAdd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>新增一筆</button>
+</div></div>
+
+<div class="viewer" id="viewer"><div class="vbar"><button type="button" id="vClose">關閉</button><span id="vTitle"></span><button type="button" class="del" id="vDel">刪除</button></div><div class="vbody"><img id="vImg" alt=""></div><div class="vcap" id="vCap">兩指可以放大</div></div>
+<div class="scrim" id="scrim"></div>
+
+<!-- entry form -->
+<div class="sheet" id="formSheet" role="dialog" aria-label="新增一筆">
+  <header><button class="cancel" id="formCancel">取消</button><h2 id="formTitle">新增一筆</h2><button id="formSave">儲存</button></header>
+  <form id="form" autocomplete="off">
+    <div class="field"><label>日期</label><input type="date" id="fDate" required></div>
+    <div class="field"><label>施工地點 / 展別</label><input type="text" id="fPlace" placeholder="例：世貿3C留守、南港室內設計展" required></div>
+    <div class="field"><label>計價方式</label>
+      <div class="seg"><button type="button" id="modeHour" class="on">時薪</button><button type="button" id="modeFlat">固定金額</button><button type="button" id="modePiece">計件</button></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>出勤時間起</label><input type="time" id="fStart" class="mono"></div>
+      <div class="field"><label>出勤時間止</label><input type="time" id="fEnd" class="mono"></div>
+    </div>
+    <div class="row3" id="hourFields">
+      <div class="field"><label>休息（小時）</label><input type="text" id="fRest" class="mono" inputmode="decimal" placeholder="X 或 1"></div>
+      <div class="field"><label>白天時薪</label><input type="text" id="fRate" class="mono" inputmode="numeric" placeholder="自動"></div>
+      <div class="field"><label>半夜時薪</label><input type="text" id="fNightRate" class="mono" inputmode="numeric" placeholder="自動"></div>
+    </div>
+    <div class="field" id="flatFields" hidden><label>固定金額（走道班、拆櫃）</label><input type="text" id="fFlat" class="mono" inputmode="numeric" placeholder="1500"></div>
+    <div class="row" id="pieceFields" hidden>
+      <div class="field"><label>數量（格）</label><input type="text" id="fQty" class="mono" inputmode="decimal" placeholder="79"></div>
+      <div class="field"><label>每格單價</label><input type="text" id="fPieceRate" class="mono" inputmode="numeric" placeholder="70"></div>
+    </div>
+    <div class="hint" id="restHint">休息填數字會從總時數扣掉，填 X 代表沒休息。時薪留空會自動帶設定裡的（公司或該雇主）；半夜時段的時數會自動算，不用自己填。時間留空＝先記地點，之後再補。</div>
+
+    <div class="calc">
+      <div><div class="k">總時數</div><div class="v num" id="cHours">—</div></div>
+      <div><div class="k">申請金額</div><div class="v num" id="cAmount">—</div></div>
+    </div>
+
+    <div class="field"><label>照片備註（平面圖、簽單）</label>
+      <div class="photos" id="fPhotos"></div>
+      <input type="file" id="fPhotoFile" accept="image/*" multiple hidden>
+    </div>
+
+    <details>
+      <summary>加班時段、加給、手動覆蓋</summary>
+      <div class="field"><label>加班時段（表上「加班時段」欄）</label><input type="text" id="fOvertime" placeholder="例：18:00–22:00"></div>
+      <div class="row">
+        <div class="field"><label>加給金額</label><input type="text" id="fExtra" class="mono" inputmode="numeric" placeholder="1200"></div>
+        <div class="field"><label>加給說明</label><input type="text" id="fExtraNote" placeholder="寵物展"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>半夜時數（手動覆蓋）</label><input type="text" id="fNight" class="mono" inputmode="decimal" placeholder="留空＝自動"></div>
+        <div class="field"><label>總時數（手動覆蓋）</label><input type="text" id="fHoursOv" placeholder="留空＝自動"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>申請金額（手動覆蓋）</label><input type="text" id="fAmountOv" placeholder="留空＝自動"></div>
+      </div>
+      <div class="field"><label>併入哪個月結算</label><select id="fStmt"></select></div>
+      <div class="field"><label>歸類</label><div class="seg two"><button type="button" id="tagCo" class="on">公司（列入月結表）</button><button type="button" id="tagOther">其他雇主</button></div></div>
+    </details>
+    <button type="button" class="danger" id="formDelete" hidden>刪除這筆</button>
+  </form>
+</div>
+
+<!-- settings -->
+<div class="sheet" id="settingsSheet" role="dialog" aria-label="設定">
+  <header><button class="cancel" id="setCancel">關閉</button><h2>設定</h2><button id="setSave">儲存</button></header>
+  <div class="field"><label>姓名（印在表頭）</label><input type="text" id="sName"></div>
+  <div class="row"><div class="field"><label>白天時薪</label><input type="text" id="sDay" class="mono" inputmode="numeric"></div><div class="field"><label>半夜時薪</label><input type="text" id="sNight" class="mono" inputmode="numeric"></div></div>
+  <div class="row"><div class="field"><label>走道班固定金額（舊制）</label><input type="text" id="sFlat" class="mono" inputmode="numeric"></div><div class="field"><label>計件每格單價</label><input type="text" id="sPiece" class="mono" inputmode="numeric"></div></div>
+  <div class="row"><div class="field"><label>走道時薪（日夜同價）</label><input type="text" id="sAisle" class="mono" inputmode="numeric" placeholder="350"></div><div class="field"><label>走道時薪從哪個月起</label><input type="month" id="sAisleFrom" class="mono"></div></div>
+  <p class="hint">從這個月起，「進…走道」改用時薪算（含 22:00 以後），不再一式固定金額；之前的月份維持固定金額。</p>
+  <div class="row"><div class="field"><label>最低計時（小時）</label><input type="text" id="sMin" class="mono" inputmode="decimal"></div><div class="field"><label>發薪日（每月幾號）</label><input type="text" id="sPay" class="mono" inputmode="numeric"></div></div>
+  <div class="row"><div class="field"><label>公司半夜從幾點起</label><input type="text" id="sNF" class="mono" inputmode="numeric" placeholder="22"></div><div class="field"><label>到幾點止</label><input type="text" id="sNT" class="mono" inputmode="numeric" placeholder="6"></div></div>
+  <div class="field"><label>其他雇主的關鍵字（開頭是這些字的，不列入公司月結表）</label><input type="text" id="sOther" placeholder="凱哥,傑哥,爸,偉謙,璦美,路寬,星光"></div>
+  <div class="field"><label>其他雇主的時薪（名字=白天/半夜@半夜起-止，逗號分隔；沒列的會標待補）</label><input type="text" id="sOtherRates" placeholder="星光=300/350@22-7"></div>
+  <button class="btn" id="btnFeedback" style="width:100%;margin:6px 0 14px">回報問題／想改哪裡</button>
+  <h3 style="font-size:13px;font-weight:700;margin:18px 0 8px">雲端同步（Google Sheet）</h3>
+  <div class="field"><label>同步網址（Apps Script 部署網址）</label><input type="url" id="sSyncUrl" placeholder="https://script.google.com/macros/s/…/exec" autocapitalize="off" autocorrect="off"></div>
+  <div class="field"><label>密碼（token）</label><input type="text" id="sSyncToken" class="mono" autocapitalize="off" autocorrect="off"></div>
+  <div class="field"><label>Google Sheet 網址（給「打開 Google Sheet」按鈕用）</label><input type="url" id="sSheetUrl" placeholder="https://docs.google.com/spreadsheets/d/…" autocapitalize="off" autocorrect="off"></div>
+  <a class="btn primary" id="btnOpenSheet" href="#" target="_blank" rel="noopener" style="width:100%;margin-bottom:10px;text-decoration:none" hidden>打開 Google Sheet</a>
+  <div class="settings-actions" style="margin-top:0"><button class="btn" id="btnSyncNow">立即同步</button><button class="btn" id="btnSyncPull">從雲端還原</button></div>
+  <p class="hint" id="syncInfo">還沒設定。設定好之後每次新增／修改都會自動背景傳到 Google Sheet；沒網路會先排隊。</p>
+  <h3 style="font-size:13px;font-weight:700;margin:18px 0 8px">備份與還原</h3>
+  <button class="btn primary" id="btnExportFile" style="width:100%;margin-bottom:10px">備份到「檔案」</button>
+  <div class="settings-actions" style="margin-top:0">
+    <button class="btn" id="btnImportFile">從檔案還原</button>
+    <button class="btn" id="btnImport">貼上文字還原</button>
+  </div>
+  <p class="hint" id="backupInfo"></p>
+  <button class="linkbtn" id="btnExport" style="margin:-4px 0 14px">改用複製文字的方式備份</button>
+  <div class="settings-actions"><button class="btn" id="btnCheckUpdate">檢查更新</button><button class="btn" id="btnReload">重新整理</button></div>
+  <p class="hint" id="verInfo"></p>
+  <input type="file" id="fileRestore" accept=".json,application/json" hidden>
+  <p class="note"><b>資料存在這支手機的瀏覽器裡</b>，不會上傳。用 Safari 開這個網址 → 分享 → 加入主畫面，之後固定從主畫面的圖示開，資料才會在同一個地方。換手機前先按「備份」，把那段文字貼到 LINE 記事本存著。</p>
+  <h3 style="font-size:13px;font-weight:700;margin:18px 0 8px">最近刪除（30 天內可復原）</h3>
+  <div class="trash" id="trashList"></div>
+  <button class="btn" id="btnRestoreWipe" hidden style="width:100%;height:46px;font-size:14px;margin-bottom:10px">還原「清除全部」之前的資料</button>
+  <button class="danger" id="btnWipe">清除全部資料</button>
+</div>
+
+<!-- feedback -->
+<div class="sheet" id="feedbackSheet" role="dialog" aria-label="回報">
+  <header><button class="cancel" id="fbCancel">取消</button><h2>回報問題／想改哪裡</h2><button id="fbSend">送出</button></header>
+  <div class="field"><label>怎麼稱呼</label><input type="text" id="fbName" placeholder="ZL"></div>
+  <div class="field"><label>想說什麼（哪裡怪怪的、想加什麼、怎麼算比較對…）</label><textarea class="big" id="fbText" rows="6" placeholder="例：9/3 走道那筆金額好像不對，應該是…"></textarea></div>
+  <label style="display:flex;gap:8px;align-items:center;font-size:13px;margin:-4px 0 12px"><input type="checkbox" id="fbAttach" checked style="width:18px;height:18px"> 一起附上目前這個月的紀錄，方便對照</label>
+  <p class="hint">送出後會存到 Google Sheet 的「回報」分頁，Yoona 看到就會處理。</p>
+</div>
+
+<!-- import -->
+<div class="sheet" id="importSheet" role="dialog" aria-label="匯入">
+  <header><button class="cancel" id="impCancel">取消</button><h2>從記事本匯入</h2><button id="impSave" disabled>匯入</button></header>
+  <div class="field"><label>匯入到哪個月結算</label><select id="impStmt"></select></div>
+  <div class="field"><label>把 LINE 記事本的內容整段貼進來，一行一筆</label>
+    <textarea class="big" id="impText" placeholder="8/1 撤世貿AI展走道+攤位 17:30-22:00 X
+2 拆技能競賽+南二7樓 08:00-19:00 休1
+4 文博計件 79格
+13 進世貿美容美甲走道 18:00-22:00 1500
+25 拆櫃 1500"></textarea></div>
+  <p class="hint">看得懂的格式：日期（8/1 或只寫 1，沒寫就沿用上一行）、地點、時間（17:30-22:00 或 1730-2200）、休息（休1 或 X）、計件（79格）、固定金額（1500）。從 Excel 複製整列貼上也可以。</p>
+  <div class="preview" id="impPreview"></div>
+</div>
+
+<!-- report -->
+<div id="report">
+  <div class="reportbar"><h2 id="reportTitle">月結表</h2><div class="acts"><button id="reportClose">返回</button><button id="reportXlsx">Excel</button><button class="go" id="reportPrint">PDF</button></div></div>
+  <div class="reportwrap"><div class="paper" id="paper"></div></div>
+  <p class="reportnote">iPhone：按「PDF」→ 列印畫面 → 用兩指把預覽放大 → 右上分享 → 儲存到檔案 或 傳到 LINE。</p>
+</div>
+
+<script>
+(function(){
+const KEY='zl-demo-v1';
+const APP_VERSION=17;
+const $=id=>document.getElementById(id);
+const pad=n=>String(n).padStart(2,'0');
+const today=new Date();
+const ymOf=d=>d.slice(0,7);
+
+let state=load();
+let view=state.entries.length?latestStmt():ymOf(isoToday());
+let editing=null, mode='hour', tag='';
+
+function isoToday(){return today.getFullYear()+'-'+pad(today.getMonth()+1)+'-'+pad(today.getDate());}
+function latestStmt(){return state.entries.map(e=>e.stmt).sort().pop();}
+function defaults(){return {settings:{name:'ZL',dayRate:260,nightRate:310,flatRate:1500,pieceRate:70,minHours:4,payDay:10,otherKeys:'凱哥,傑哥,爸,偉謙,璦美,路寬,星光,代調,父子,裕隆城',nightFrom:22,nightTo:6,otherRates:'星光=300/350@22-7',aisleRate:350,aisleFrom:'2026-09'},entries:[],sample:false};}
+function load(){
+  try{const raw=localStorage.getItem(KEY); if(raw){const s=JSON.parse(raw); const st=Object.assign(defaults().settings,s.settings||{}); if(st.otherRates==='星光=300/350')st.otherRates='星光=300/350@22-7'; if(!(s.settings&&s.settings.kwV>=14)){const have=String(st.otherKeys||'').split(/[,，\s]+/).filter(Boolean); ['代調','父子','裕隆城'].forEach(k=>{if(!have.includes(k))have.push(k);}); st.otherKeys=have.join(','); st.kwV=14;}
+    if(!(s.settings&&s.settings.aisleV>=16)){st.aisleRate=st.aisleRate||350;st.aisleFrom=st.aisleFrom||'2026-09';(s.entries||[]).forEach(e=>{if(e.mode==='flat'&&e.start&&e.end&&e.tag!=='other'&&/^進.*走道/.test(e.place||'')&&e.stmt>=st.aisleFrom){e.mode='hour';e.flat='';}});st.aisleV=16;} (s.entries||[]).forEach(e=>{if(Number(e.night)>24){e.nightRate=e.night;e.night='';} if(e.tag==='other'&&e.rate&&Number(e.rate)===st.dayRate)e.rate='';}); return Object.assign(defaults(),s,{settings:st});}}catch(e){}
+  const d=defaults(); const ym=isoToday().slice(0,7); const pm=new Date(today.getFullYear(),today.getMonth()-1,1); const pym=pm.getFullYear()+'-'+pad(pm.getMonth()+1);
+  d.entries=sampleEntries().map(e=>Object.assign(e,{date:e.date.replace('2026-07',ym).replace('2026-06',pym),stmt:ym})); d.sample=true; return d;
+}
+function save(){state.lastChangeAt=Date.now();state.syncDirty=true;try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){} if(typeof scheduleSync==='function')scheduleSync();}
+function uid(){return Math.random().toString(36).slice(2,10);}
+function sampleEntries(){
+  const E=(date,place,start,end,o={})=>Object.assign({id:uid(),date,place,start,end,rest:'',night:'',rate:'',flat:'',qty:'',pieceRate:'',overtime:'',extra:'',extraNote:'',hoursOv:'',amountOv:'',mode:'hour',stmt:'2026-07'},o);
+  return [
+    E('2026-06-23','世貿食品走道','19:00','23:00',{mode:'flat',flat:'1500'}),
+    E('2026-07-01','世貿3C留守','08:00','17:00',{rest:'1'}),
+    E('2026-07-02','世貿3C留守','08:00','17:00',{rest:'1'}),
+    E('2026-07-02','進世貿3C走道','19:00','22:00',{mode:'flat',flat:'1500'}),
+    E('2026-07-04','文博計件','','',{mode:'piece',qty:'79'}),
+    E('2026-07-06','拆南港寵物展+備料下台中','17:00','04:00',{rest:'X',extra:'1200',extraNote:'寵物展'}),
+    E('2026-07-07','台中茶咖啡+世貿婦幼走道備料','08:00','22:00',{rest:'2'}),
+    E('2026-07-08','南港室內設計展','08:00','18:00',{rest:'X'}),
+    E('2026-07-12','巡世貿家具','08:00','12:00',{rest:'X'}),
+  ];
+}
+
+/* ---------- calculations ---------- */
+const mins=t=>{const [h,m]=(t||'0:0').split(':').map(Number);return h*60+(m||0);};
+const fmt=n=>String(Math.round(n*100)/100);
+const sumNums=s=>(String(s||'').match(/\d+(?:\.\d+)?/g)||[]).reduce((a,b)=>a+Number(b),0);
+
+function nightOverlap(startMin,endMin,from,to){
+  // hours falling inside the night window [from, to) (e.g. 22–6), over a range that may cross midnight
+  let n=0; for(let t=startMin;t<endMin;t+=15){const h=(t%1440)/60; const inNight=from>to?(h>=from||h<to):(h>=from&&h<to); if(inNight)n+=15;} return n/60;
+}
+function otherRateFor(place){
+  const rules=String(state.settings.otherRates||'').split(/[,，\n]+/).map(x=>x.trim()).filter(Boolean);
+  for(const r of rules){const m=r.match(/^(.+?)\s*[=＝:：]\s*(\d+)\s*(?:[\/／]\s*(\d+))?\s*(?:@\s*(\d{1,2})\s*[-~－]\s*(\d{1,2}))?$/); if(m&&place.includes(m[1].trim()))return {day:Number(m[2]),night:Number(m[3]||m[2]),from:m[4]?Number(m[4]):(state.settings.nightFrom||22),to:m[5]?Number(m[5]):(state.settings.nightTo||6)};}
+  return null;
+}
+function compute(e){
+  const S=state.settings;
+  const rule=e.tag==='other'?otherRateFor(e.place||''):null;
+  const aisle=e.mode==='hour'&&aisleHourly(e);
+  const dayRate=Number(e.rate)||(rule?rule.day:(aisle?S.aisleRate:S.dayRate)), nightRate=Number(e.nightRate)||(rule?rule.night:(aisle?S.aisleRate:S.nightRate));
+  const hasTime=!!(e.start&&e.end);
+  let dur=0; if(hasTime){dur=(mins(e.end)-mins(e.start))/60; if(dur<=0)dur+=24;}
+  const restN=/^\d+(\.\d+)?$/.test(String(e.rest).trim())?Number(e.rest):0;
+  const restText=String(e.rest||'').trim().toUpperCase()==='X'?'X':(e.rest||'');
+  let hoursText='', rateText='', amount=null;
+  if(e.mode==='flat'){
+    amount=Number(e.flat)||S.flatRate; rateText=fmt(amount);
+  }else if(e.mode==='piece'){
+    const q=Number(e.qty)||0, pr=Number(e.pieceRate)||S.pieceRate;
+    rateText=fmt(pr); if(q>0){hoursText=fmt(q)+'格'; amount=q*pr;}
+  }else if(hasTime){
+    let total=Math.max(0,dur-restN);
+    const nf=rule?rule.from:(S.nightFrom||22), nt=rule?rule.to:(S.nightTo||6);
+    let night=e.night!==''&&e.night!=null?Number(e.night)||0:nightOverlap(mins(e.start),mins(e.end)+(mins(e.end)<=mins(e.start)?1440:0),nf,nt);
+    night=Math.min(night,total);
+    if(total<S.minHours&&total>0){total=S.minHours;}
+    const day=Math.max(0,total-night);
+    if(night>0){ hoursText=(day>0?fmt(day)+'+':'')+'半夜'+fmt(night)+'小'; rateText=dayRate+'/'+nightRate; amount=day*dayRate+night*nightRate; }
+    else{ hoursText=fmt(total); rateText=String(dayRate); amount=total*dayRate; }
+  }else{ rateText=String(dayRate); }
+  if(e.tag==='other'&&e.mode==='hour'&&!rule&&!e.rate)amount=null; // 其他雇主沒設定時薪就先待補
+  let amountText=amount==null?'':String(Math.round(amount));
+  const extra=Number(e.extra)||0;
+  if(extra>0)amountText=(amountText||'0')+'+'+extra+(e.extraNote||'');
+  if(e.hoursOv&&e.hoursOv.trim())hoursText=e.hoursOv.trim();
+  if(e.amountOv&&e.amountOv.trim())amountText=e.amountOv.trim();
+  const pending=!amountText;
+  return {hoursText,rateText,restText,amountText,pending,amountNum:sumNums(amountText),hoursNum:e.mode==='piece'?0:sumNums(hoursText)};
+}
+
+/* ---------- rendering ---------- */
+const roc=ym=>{const [y,m]=ym.split('-').map(Number);return {y:y-1911,m};};
+function shift(ym,d){const [y,m]=ym.split('-').map(Number);const dt=new Date(y,m-1+d,1);return dt.getFullYear()+'-'+pad(dt.getMonth()+1);}
+function lastDay(ym){const [y,m]=ym.split('-').map(Number);return new Date(y,m,0).getDate();}
+function monthEntries(ym){return state.entries.filter(e=>e.stmt===ym&&!e.deleted).sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start));}
+function daysUntil(y,m,d){const t=new Date(today.getFullYear(),today.getMonth(),today.getDate());return Math.round((new Date(y,m-1,d)-t)/86400000);}
+
+function render(){
+  $('brandName').textContent=state.settings.name||'工時';
+  const r=roc(view);
+  $('monthTitle').textContent=r.y+'年'+r.m+'月';
+  const rows=monthEntries(view);
+  const days=new Set(rows.map(e=>e.date)).size;
+  let hours=0,amount=0,other=0;
+  rows.forEach(e=>{const c=compute(e);if(e.tag==='other'){other+=c.amountNum;return;}hours+=c.hoursNum;amount+=c.amountNum;});
+  $('sumDays').innerHTML=days+'<small>天</small>';
+  $('sumHours').innerHTML=fmt(hours)+'<small>h</small>';
+  $('sumRows').innerHTML=other.toLocaleString('zh-TW')+'<small>元</small>';
+  $('sumAmount').innerHTML=amount.toLocaleString('zh-TW')+'<small>元</small>';
+  const [vy,vm]=view.split('-').map(Number);
+  const ld=lastDay(view);
+  const nxt=shift(view,1); const [ny,nm]=nxt.split('-').map(Number);
+  $('closeDate').textContent=vm+'/'+ld;
+  $('payDate').textContent=nm+'/'+state.settings.payDay;
+  const dc=daysUntil(vy,vm,ld), dp=daysUntil(ny,nm,state.settings.payDay);
+  const pill=$('countdown');
+  if(dc>=0){pill.textContent=dc===0?'今天結單':'還有 '+dc+' 天結單';pill.className='pill'+(dc>7?' quiet':'');}
+  else if(dp>=0){pill.textContent=dp===0?'今天發薪':'還有 '+dp+' 天發薪';pill.className='pill'+(dp>7?' quiet':'');}
+  else{pill.textContent='已結算';pill.className='pill quiet';}
+  if($('backupbar'))renderBackupBar();
+  const list=$('list'); list.innerHTML='';
+  $('empty').hidden=rows.length>0;
+  rows.forEach(e=>{
+    const c=compute(e); const [y,m,d]=e.date.split('-').map(Number);
+    const b=document.createElement('button'); b.type='button'; b.className='entry'+(ymOf(e.date)!==e.stmt||e.tag==='other'?' other':'');
+    const metaBits=[];
+    if(e.start)metaBits.push(`<span class="num">${e.start}–${e.end||'?'}</span>`);
+    if(e.mode==='flat')metaBits.push('<span class="chip">固定</span>');
+    else if(e.mode==='piece')metaBits.push('<span class="chip">計件 '+(e.qty||'?')+'格</span>');
+    else{ if(c.restText&&c.restText!=='X')metaBits.push('休'+c.restText+'h'); if(/半夜/.test(c.hoursText))metaBits.push('<span class="chip">含半夜</span>'); }
+    if(c.pending)metaBits.push('<span class="chip warn">待補</span>');
+    if(Number(e.extra)>0)metaBits.push('<span class="chip">+'+e.extra+(e.extraNote||'')+'</span>');
+    if(e.tag==='other')metaBits.unshift('<span class="chip">其他雇主</span>');
+    if(ymOf(e.date)!==e.stmt)metaBits.push('<span class="chip">併入本月</span>');
+    if(e.photos&&e.photos.length)metaBits.push('<span class="chip ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>'+e.photos.length+'</span>');
+    b.innerHTML=`<div class="date num"><b>${d}</b><i>${m}月</i></div><div class="main"><div class="place">${esc(e.place)}</div><div class="meta">${metaBits.join('')}</div></div><div class="amt num"><b>${c.pending?'—':c.amountNum.toLocaleString('zh-TW')}</b><i>${c.hoursText?(e.mode==='piece'||/半夜/.test(c.hoursText)?c.hoursText:c.hoursText+'h'):(e.mode==='flat'?'固定':'')}</i></div>`;
+    b.addEventListener('click',()=>openForm(e));
+    list.appendChild(b);
+  });
+}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+/* ---------- sheets ---------- */
+function openSheet(id){$('scrim').classList.add('open');$(id).classList.add('open');}
+function closeSheets(){$('scrim').classList.remove('open');document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('open','full'));}
+/* drag the handle: up = full screen, down = shrink / close */
+document.querySelectorAll('.sheet header').forEach(h=>{
+  let y0=null;
+  h.addEventListener('touchstart',ev=>{if(ev.target.tagName==='BUTTON')return;y0=ev.touches[0].clientY;},{passive:true});
+  h.addEventListener('touchend',ev=>{if(y0==null)return;const dy=ev.changedTouches[0].clientY-y0;y0=null;const sh=h.closest('.sheet');
+    if(dy<-40)sh.classList.add('full'); else if(dy>40){ if(sh.classList.contains('full'))sh.classList.remove('full'); else closeSheets(); }});
+  h.addEventListener('dblclick',()=>h.closest('.sheet').classList.toggle('full'));
+});
+$('scrim').addEventListener('click',closeSheets);
+
+function setMode(m){mode=m;['hour','flat','piece'].forEach(k=>$('mode'+k[0].toUpperCase()+k.slice(1)).classList.toggle('on',m===k));$('hourFields').hidden=m!=='hour';$('restHint').hidden=m!=='hour';$('flatFields').hidden=m!=='flat';$('pieceFields').hidden=m!=='piece';preview();}
+$('modeHour').addEventListener('click',()=>setMode('hour'));
+$('modeFlat').addEventListener('click',()=>setMode('flat'));
+$('modePiece').addEventListener('click',()=>setMode('piece'));
+function setTag(t){tag=t;$('tagCo').classList.toggle('on',t==='');$('tagOther').classList.toggle('on',t==='other');}
+$('tagCo').addEventListener('click',()=>setTag(''));
+$('tagOther').addEventListener('click',()=>setTag('other'));
+
+function fillStmtOptions(date){
+  const base=ymOf(date||isoToday()); const sel=$('fStmt'); sel.innerHTML='';
+  [base,shift(base,1)].forEach((ym,i)=>{const o=document.createElement('option');const r=roc(ym);o.value=ym;o.textContent=r.y+'年'+r.m+'月'+(i?'（延到下月）':'（當月）');sel.appendChild(o);});
+}
+function openForm(e){
+  editing=e||null;
+  $('formTitle').textContent=e?'編輯':'新增一筆';
+  $('formDelete').hidden=!e;
+  const S=state.settings;
+  const v=e||{date:isoToday(),place:'',start:'08:00',end:'17:00',rest:'',night:'',rate:'',nightRate:'',flat:'',qty:'',pieceRate:'',overtime:'',extra:'',extraNote:'',hoursOv:'',amountOv:'',mode:'hour',tag:'',stmt:ymOf(isoToday())};
+  $('fDate').value=v.date;$('fPlace').value=v.place;$('fStart').value=v.start;$('fEnd').value=v.end;
+  $('fRest').value=v.rest;$('fNight').value=v.night||'';$('fRate').value=v.rate||'';$('fNightRate').value=v.nightRate||'';$('fFlat').value=v.flat||S.flatRate;$('fQty').value=v.qty||'';$('fPieceRate').value=v.pieceRate||S.pieceRate;
+  $('fOvertime').value=v.overtime;$('fExtra').value=v.extra;$('fExtraNote').value=v.extraNote;$('fHoursOv').value=v.hoursOv;$('fAmountOv').value=v.amountOv;
+  fillStmtOptions(v.date); $('fStmt').value=v.stmt;
+  if(!$('fStmt').value){const o=document.createElement('option');o.value=v.stmt;o.textContent=v.stmt;$('fStmt').appendChild(o);$('fStmt').value=v.stmt;}
+  formPhotos=(v.photos||[]).slice(); renderFormPhotos();
+  setMode(v.mode||'hour'); setTag(v.tag||'');
+  openSheet('formSheet');
+  if(!e)setTimeout(()=>$('fPlace').focus(),250);
+}
+function readForm(){
+  return {id:editing?editing.id:uid(),date:$('fDate').value,place:$('fPlace').value.trim(),start:$('fStart').value,end:$('fEnd').value,
+    rest:$('fRest').value.trim(),night:$('fNight').value.trim(),rate:$('fRate').value.trim(),nightRate:$('fNightRate').value.trim(),flat:$('fFlat').value.trim(),qty:$('fQty').value.trim(),pieceRate:$('fPieceRate').value.trim(),
+    overtime:$('fOvertime').value.trim(),extra:$('fExtra').value.trim(),extraNote:$('fExtraNote').value.trim(),
+    hoursOv:$('fHoursOv').value.trim(),amountOv:$('fAmountOv').value.trim(),mode,tag,stmt:$('fStmt').value,photos:formPhotos.slice()};
+}
+function preview(){
+  const e=readForm(); const c=compute(e);
+  $('cHours').innerHTML=(c.hoursText||'—')+(e.mode==='hour'&&!/半夜/.test(c.hoursText)?'<small>小時</small>':e.mode==='flat'?'<small>固定</small>':'');
+  $('cAmount').innerHTML=(c.amountText?esc(c.amountText):'待補')+'<small>單價 '+esc(c.rateText)+'</small>';
+}
+['fStart','fEnd','fRest','fNight','fRate','fNightRate','fFlat','fQty','fPieceRate','fExtra','fExtraNote','fHoursOv','fAmountOv'].forEach(id=>$(id).addEventListener('input',preview));
+$('fDate').addEventListener('change',()=>{const keep=$('fStmt').value;const base=ymOf($('fDate').value);fillStmtOptions($('fDate').value);$('fStmt').value=(base===keep||shift(base,1)===keep)?keep:base;});
+$('formCancel').addEventListener('click',closeSheets);
+$('formSave').addEventListener('click',()=>{
+  const f=$('form'); if(!f.reportValidity())return;
+  const e=readForm();
+  if(state.sample){state.sample=false;state.entries=[];}
+  const i=state.entries.findIndex(x=>x.id===e.id);
+  e.updatedAt=Date.now();
+  if(i>=0){(state.entries[i].photos||[]).forEach(id=>{if(!e.photos.includes(id))photoDel(id);});state.entries[i]=e;} else state.entries.push(e);
+  formPhotos=[];
+  save(); view=e.stmt; closeSheets(); render();
+});
+let toastTimer=null;
+function toast(msg,actionLabel,action){
+  document.querySelectorAll('.toast').forEach(t=>t.remove()); clearTimeout(toastTimer);
+  const t=document.createElement('div'); t.className='toast'; t.innerHTML='<span>'+esc(msg)+'</span>'+(actionLabel?'<button type="button">'+esc(actionLabel)+'</button>':'');
+  if(actionLabel)t.querySelector('button').addEventListener('click',()=>{action();t.remove();});
+  document.body.appendChild(t); toastTimer=setTimeout(()=>t.remove(),6000);
+}
+function purgeTrash(){const cut=Date.now()-30*86400000; const gone=state.entries.filter(e=>e.deleted&&e.deleted<=cut); state.entries=state.entries.filter(e=>!e.deleted||e.deleted>cut); gone.forEach(e=>(e.photos||[]).forEach(id=>photoDel(id)));}
+$('formDelete').addEventListener('click',()=>{
+  if(!editing)return; const id=editing.id; const e=state.entries.find(x=>x.id===id); if(!e)return;
+  if(state.sample){state.sample=false;state.entries=[];save();closeSheets();render();return;}
+  e.deleted=Date.now(); save(); closeSheets(); render();
+  toast('已刪除「'+e.place+'」','復原',()=>{delete e.deleted;save();render();});
+});
+$('btnAdd').addEventListener('click',()=>openForm(null));
+$('prevM').addEventListener('click',()=>{view=shift(view,-1);render();});
+$('nextM').addEventListener('click',()=>{view=shift(view,1);render();});
+
+/* settings */
+$('btnSettings').addEventListener('click',()=>{const S=state.settings;$('sName').value=S.name;$('sDay').value=S.dayRate;$('sNight').value=S.nightRate;$('sFlat').value=S.flatRate;$('sPiece').value=S.pieceRate;$('sMin').value=S.minHours;$('sPay').value=S.payDay;$('sOther').value=S.otherKeys||'';$('sOtherRates').value=S.otherRates||'';$('sNF').value=S.nightFrom??22;$('sNT').value=S.nightTo??6;$('sAisle').value=S.aisleRate??350;$('sAisleFrom').value=S.aisleFrom||'2026-09';$('sSyncUrl').value=(state.sync&&state.sync.url)||'';$('sSyncToken').value=(state.sync&&state.sync.token)||'';$('sSheetUrl').value=(state.sync&&state.sync.sheetUrl)||'';renderSyncInfo();renderTrash();openSheet('settingsSheet');});
+$('setCancel').addEventListener('click',closeSheets);
+$('setSave').addEventListener('click',()=>{state.settings={name:$('sName').value.trim()||'工時',dayRate:Number($('sDay').value)||260,nightRate:Number($('sNight').value)||310,flatRate:Number($('sFlat').value)||1500,pieceRate:Number($('sPiece').value)||70,minHours:Number($('sMin').value)||0,payDay:Number($('sPay').value)||10,otherKeys:$('sOther').value.trim(),otherRates:$('sOtherRates').value.trim(),nightFrom:Number($('sNF').value)||22,nightTo:Number($('sNT').value)||6,aisleRate:Number($('sAisle').value)||350,aisleFrom:$('sAisleFrom').value||'2026-09',kwV:14,aisleV:16};state.sync=Object.assign({},state.sync||{},{url:$('sSyncUrl').value.trim(),token:$('sSyncToken').value.trim(),sheetUrl:$('sSheetUrl').value.trim()});save();closeSheets();render();});
+$('btnExport').addEventListener('click',async()=>{const txt=JSON.stringify(state);try{await navigator.clipboard.writeText(txt);$('btnExport').textContent='已複製，貼到 LINE 記事本存好';}catch(e){window.prompt('全選複製這段文字：',txt);}setTimeout(()=>$('btnExport').textContent='改用複製文字的方式備份',2500);});
+$('btnImport').addEventListener('click',()=>{const txt=window.prompt('貼上之前備份的內容：');if(!txt)return;try{const s=JSON.parse(txt);if(!Array.isArray(s.entries))throw 0;state=Object.assign(defaults(),s);state.sample=false;save();view=latestStmt()||view;closeSheets();render();}catch(e){alert('這段內容不是有效的備份。');}});
+$('btnWipe').addEventListener('click',()=>{
+  if(!confirm('確定清除全部紀錄？'))return;
+  if(!confirm('再確認一次：這會清掉所有月份的紀錄。清除前會自動留一份備份，可以在設定裡還原。'))return;
+  try{localStorage.setItem(KEY+'-wipe-backup',JSON.stringify({at:Date.now(),state}));}catch(e){}
+  state=defaults();save();view=ymOf(isoToday());closeSheets();render();
+});
+$('btnRestoreWipe').addEventListener('click',()=>{try{const b=JSON.parse(localStorage.getItem(KEY+'-wipe-backup'));if(!b||!b.state)return;state=b.state;save();view=latestStmt()||view;closeSheets();render();toast('已還原清除前的資料');}catch(e){}});
+function renderTrash(){
+  purgeTrash();
+  const box=$('trashList'); box.innerHTML='';
+  const del=state.entries.filter(e=>e.deleted).sort((a,b)=>b.deleted-a.deleted);
+  if(!del.length){box.innerHTML='<div class="trow"><span>沒有刪除的紀錄</span></div>';}
+  del.forEach(e=>{const d=document.createElement('div');d.className='trow';const c=compute(e);d.innerHTML=`<div>${esc(e.place)}<span>${e.date.slice(5).replace('-','/')} · ${c.amountText||'—'} · 刪於 ${new Date(e.deleted).toLocaleDateString('zh-TW')}</span></div><button type="button">復原</button>`;d.querySelector('button').addEventListener('click',()=>{delete e.deleted;save();render();renderTrash();});box.appendChild(d);});
+  let hasWipe=false; try{hasWipe=!!localStorage.getItem(KEY+'-wipe-backup');}catch(e){}
+  $('btnRestoreWipe').hidden=!hasWipe;
+}
+
+/* ---------- import from notes ---------- */
+const CN_NUM={'一':1,'二':2,'兩':2,'三':3,'四':4,'半':0.5,'一個半':1.5,'1':1,'2':2,'3':3,'0.5':0.5,'1.5':1.5};
+function otherKeywords(){return String(state.settings.otherKeys||'').split(/[,，\s]+/).filter(Boolean);}
+function isOther(place){return otherKeywords().some(k=>place.startsWith(k));}
+function isAislePlace(place){return /^進.*走道/.test(place||'');}
+function aisleHourly(e){const S=state.settings;return !!(S.aisleRate&&S.aisleFrom&&e.stmt>=S.aisleFrom&&isAislePlace(e.place)&&e.tag!=='other');}
+function isFlatPlace(place,stmt){const S=state.settings;if(isAislePlace(place)&&S.aisleRate&&S.aisleFrom&&stmt&&stmt>=S.aisleFrom)return false;return isAislePlace(place)||/^拆櫃/.test(place);}
+function blankEntry(stmt){return {id:uid(),date:'',place:'',start:'',end:'',rest:'',night:'',rate:'',flat:'',qty:'',pieceRate:'',overtime:'',extra:'',extraNote:'',hoursOv:'',amountOv:'',mode:'hour',tag:'',stmt};}
+// time token: 8. / 8.30 / 17:30 / 08:00 / 0.-4.30
+const T='(\\d{1,2})(?:[.:：](\\d{2}))?\\.?';
+const RANGE=new RegExp('(?:^|\\s|(?<=[^\\d]))'+T+'\\s*[-~～–—到至]\\s*'+T+'(?=\\s|$|[^\\d])');
+const OPEN=new RegExp('(?:^|\\s|(?<=[^\\d]))'+T+'\\s*[-~～–—]\\s*(?=\\s|$)');
+const LONE=new RegExp('(?:^|\\s|(?<=[^\\d.:]))(\\d{1,2})\\.(\\d{2})?(?=\\s|$)');
+function parseImport(text, stmt){
+  const [sy,sm]=stmt.split('-').map(Number);
+  let curM=sm, curD=null; const out=[];
+  const toTime=(h,m)=>pad(Number(h))+':'+pad(Number(m||0));
+  text.split(/\r?\n/).forEach(raw=>{
+    let line=raw.replace(/[　\t]+/g,' ').trim(); if(!line)return;
+    const e=blankEntry(stmt); let warn='', skip='';
+    if(raw.includes('\t')&&raw.split('\t').length>=5){ // pasted from Excel: 月 日 地點 起 止 休息 總時數 加班 單價 金額
+      const c=raw.split('\t').map(x=>x.trim());
+      if(!c[2]&&!/^\d+$/.test(c[1]||''))return;
+      if(/^\d+$/.test(c[0]))curM=Number(c[0]); if(/^\d+$/.test(c[1]))curD=Number(c[1]);
+      e.place=c[2]||''; const tm=x=>{const m=String(x||'').match(/(\d{1,2})[:：.](\d{2})/);return m?toTime(m[1],m[2]):'';};
+      e.start=tm(c[3]); e.end=tm(c[4]); e.rest=(c[5]||'').toUpperCase()==='X'?'X':(c[5]||'');
+      const hrs=c[6]||'', rate=c[8]||'', amt=c[9]||'';
+      if(/^\d+(\.\d+)?\s*(格|B|件)$/i.test(hrs)){e.mode='piece';e.qty=hrs.match(/\d+(\.\d+)?/)[0];e.pieceRate=rate.replace(/\D/g,'')||'';}
+      else if(/^\d+$/.test(rate)&&Number(rate)>=1000){e.mode='flat';e.flat=rate;}
+      else if(/^\d+$/.test(rate))e.rate=rate;
+      if(amt&&!/^=/.test(amt)&&/[^\d]/.test(amt))e.amountOv=amt;
+    }else{
+      let s=line.replace(/[，,]/g,' ');
+      // date: 8/1, 8月1日, or bare day at line start
+      let m=s.match(/^(\d{1,2})\s*[\/／月]\s*(\d{1,2})\s*日?\s*/); if(m){curM=Number(m[1]);curD=Number(m[2]);s=s.slice(m[0].length);}
+      else{m=s.match(/^(\d{1,2})\s+(?![-~～–—])/); if(m&&Number(m[1])<=31&&!/^\d{1,2}\s+\d{1,2}[.:]/.test(s)){curD=Number(m[1]);s=s.slice(m[0].length);}}
+      // rest
+      if(/午?未休|午?沒休|午?无休|午?無休|未午休|沒午休/.test(s)){e.rest='X';s=s.replace(/午?未休|午?沒休|午?无休|午?無休|未午休|沒午休/,' ');}
+      if(!e.rest){m=s.match(/休\s*([一二兩三四半]|\d+(?:\.\d+)?)\s*(?:個半|小時|小|h)?/); if(m){const v=m[1]+(m[0].includes('個半')?'個半':'');e.rest=String(CN_NUM[v]!==undefined?CN_NUM[v]:Number(m[1]));s=s.replace(m[0],' ');}}
+      if(/(^|\s)[xX](\s|$)/.test(s)){e.rest='X';s=s.replace(/(^|\s)[xX](\s|$)/,' ');}
+      // piece: 79B / 79格 / 79件
+      m=s.match(/(?:^|\s)(\d+(?:\.\d+)?)\s*(格|件|B)(?=\s|$)/i); if(m){e.mode='piece';e.qty=m[1];s=s.replace(m[0],' ');}
+      // time range
+      m=s.match(RANGE);
+      if(m){e.start=toTime(m[1],m[2]);e.end=toTime(m[3],m[4]);s=s.replace(m[0],' ');}
+      else{ m=s.match(OPEN); if(m){e.start=toTime(m[1],m[2]);s=s.replace(m[0],' ');}
+        else{ m=s.match(LONE); if(m){e.start=toTime(m[1],m[2]);s=s.replace(m[0],' ');} } }
+      // explicit night hours
+      m=s.match(/半夜\s*(\d+(?:\.\d+)?)/); if(m){e.night=m[1];s=s.replace(m[0],' ');}
+      // extra: +1200寵物展
+      m=s.match(/\+\s*(\d{3,5})\s*([^\s\d]+)?/); if(m){e.extra=m[1];e.extraNote=m[2]||'';s=s.replace(m[0],' ');}
+      // standalone amount (4 digits) => flat
+      let amt=''; m=s.match(/(?:^|\s)([1-9]\d{3,4})(?=\s|$)/); if(m){amt=m[1];s=s.replace(m[0],' ');}
+      // leftover stray tokens like "8."
+      s=s.replace(/(^|\s)\d{1,2}\.(?=\s|$)/g,' ');
+      e.place=s.replace(/\s+/g,' ').trim();
+      // rules
+      if(e.place&&isOther(e.place))e.tag='other';
+      if(e.mode==='hour'&&e.place&&isFlatPlace(e.place,e.stmt)&&e.tag!=='other'){e.mode='flat';e.flat=amt||'';amt='';}
+      if(e.mode==='hour'&&e.start&&e.end&&!e.rest){ let d=(mins(e.end)-mins(e.start))/60; if(d<=0)d+=24; e.rest=(e.tag!=='other'&&d>=8)?'1':'X'; }
+      if(amt){
+        if(e.mode==='piece'){ if(String(compute(e).amountNum)!==amt)e.amountOv=amt; }
+        else if(e.tag==='other'||!(e.start&&e.end)){ e.mode='flat'; e.flat=amt; }
+        else { // company job with times + amount written: keep hours, only override if it differs
+          const c0=compute(e); if(String(c0.amountNum)!==amt)e.amountOv=amt;
+        }
+      }
+      if(!e.start&&!e.qty&&e.mode==='hour'&&/^\S{1,6}\d{2,3}$/.test(e.place))skip='不是工作紀錄';
+    }
+    if(!curD)warn='沒有日期';
+    if(!e.place)warn='沒有地點';
+    let y=sy; if(curM===12&&sm===1)y=sy-1;
+    e.date=y+'-'+pad(curM)+'-'+pad(curD||1);
+    if(skip)warn=skip;
+    out.push({e,warn,raw});
+  });
+  return out;
+}
+let impRows=[];
+function renderImportPreview(){
+  const box=$('impPreview'); box.innerHTML='';
+  impRows=parseImport($('impText').value,$('impStmt').value);
+  let ok=0;
+  impRows.forEach(({e,warn})=>{
+    const c=compute(e); const d=Number(e.date.slice(8)), mo=Number(e.date.slice(5,7));
+    const div=document.createElement('div'); div.className='prow'+(warn?' bad':'')+(e.tag==='other'?' other':'');
+    const bits=[]; if(e.start)bits.push(e.start+'–'+(e.end||'?')); if(e.rest&&e.mode==='hour')bits.push('休'+e.rest); if(e.mode==='piece')bits.push(e.qty+'格'); if(e.mode==='flat')bits.push('固定'); if(c.hoursText&&e.mode==='hour')bits.push(c.hoursText+(/半夜/.test(c.hoursText)?'':'h')); if(e.tag==='other')bits.push('<span class="chip">其他雇主</span>'); if(c.pending&&!warn)bits.push('<span class="chip warn">待補</span>'); if(warn)bits.push('⚠ '+warn);
+    div.innerHTML=`<div class="d">${mo}/${d}</div><div><div>${esc(e.place||'（沒有地點）')}</div><div class="m">${bits.join(' · ')}</div></div><div class="a">${c.amountText?esc(c.amountText):'—'}</div>`;
+    box.appendChild(div); if(!warn)ok++;
+  });
+  $('impSave').disabled=ok===0; $('impSave').textContent=ok?`匯入 ${ok} 筆`:'匯入';
+}
+$('btnImportText').addEventListener('click',()=>{
+  const sel=$('impStmt'); sel.innerHTML='';
+  for(let k=3;k>=-12;k--){const ym=shift(view,k);const o=document.createElement('option');const r=roc(ym);o.value=ym;o.textContent=r.y+'年'+r.m+'月';sel.appendChild(o);}
+  sel.value=view; $('impText').value=''; $('impPreview').innerHTML=''; $('impSave').disabled=true; $('impSave').textContent='匯入';
+  openSheet('importSheet'); setTimeout(()=>$('impText').focus(),250);
+});
+$('impText').addEventListener('input',renderImportPreview);
+$('impStmt').addEventListener('change',renderImportPreview);
+$('impCancel').addEventListener('click',closeSheets);
+$('impSave').addEventListener('click',()=>{
+  const good=impRows.filter(r=>!r.warn).map(r=>r.e); if(!good.length)return;
+  if(state.sample){state.sample=false;state.entries=[];}
+  good.forEach(e=>e.updatedAt=Date.now()); state.entries.push(...good); save(); view=$('impStmt').value; closeSheets(); render();
+});
+
+/* ---------- report ---------- */
+function paperRow(e,showM){
+  const c=compute(e); const m=Number(e.date.slice(5,7)), d=Number(e.date.slice(8));
+  return `<tr><td class="r">${showM?m:''}</td><td class="r">${d}</td><td class="l">${esc(e.place)}</td><td class="r">${e.start}</td><td class="r">${e.end}</td><td class="l">${esc(c.restText)}</td><td class="r">${esc(c.hoursText)}</td><td class="l">${esc(e.overtime)}</td><td class="r">${esc(c.rateText)}</td><td class="r">${esc(c.amountText)}</td></tr>`;
+}
+const NEW_FORMAT_FROM='2026-09'; // 115年9月起：表頭改「X月份」、攤位計件另起一區
+const photoMeta=new Map();
+async function preloadPhotos(ym){
+  const ids=[]; monthEntries(ym).filter(e=>e.tag!=='other').forEach(e=>(e.photos||[]).forEach(id=>ids.push(id)));
+  await Promise.all(ids.map(async id=>{ if(photoMeta.has(id))return; const d=await photoGet(id); if(!d)return; await new Promise(res=>{const im=new Image();im.onload=()=>{photoMeta.set(id,{data:d,w:im.naturalWidth,h:im.naturalHeight});res();};im.onerror=res;im.src=d;}); }));
+}
+function photoList(ym){ const out=[]; monthEntries(ym).filter(e=>e.tag!=='other').forEach(e=>(e.photos||[]).forEach((id,i)=>{const m=photoMeta.get(id); if(m)out.push({id,e,i,m});})); return out; }
+function buildPaper(){
+  const rows=monthEntries(view).filter(e=>e.tag!=='other'); const r=roc(view); const S=state.settings;
+  const last=lastDay(view); const isNew=view>=NEW_FORMAT_FROM;
+  const cols=`<colgroup><col style="width:5%"><col style="width:5%"><col style="width:25%"><col style="width:9%"><col style="width:9%"><col style="width:6%"><col style="width:10%"><col style="width:9%"><col style="width:9.5%"><col style="width:12.5%"></colgroup>`;
+  const head=`<thead><tr><th>月</th><th>日</th><th>施工地點 / 展別</th><th>出勤時間<br>起</th><th>出勤時間<br>止</th><th>休息</th><th>總時數</th><th>加班時數<br>段</th><th>單價</th><th>申請金額</th></tr></thead>`;
+  const blank=n=>'<tr>'+'<td></td>'.repeat(10)+'</tr>';
+  let html, totalA=0;
+  rows.forEach(e=>{totalA+=compute(e).amountNum;});
+  const totalTxt=totalA.toLocaleString('zh-TW');
+  if(isNew){
+    const work=rows.filter(e=>e.mode!=='piece'), piece=rows.filter(e=>e.mode==='piece');
+    html=`<div class="pname big">${esc(S.name)}</div><div class="prange">${r.y}年${r.m}月份</div><table>${cols}${head}<tbody>`;
+    let prevM=null;
+    work.forEach(e=>{const m=e.date.slice(5,7); html+=paperRow(e,m!==prevM); prevM=m;});
+    for(let i=work.length;i<16;i++)html+=blank();
+    html+=`<tr class="sec"><td colspan="3" class="l">攤位計件</td>${'<td></td>'.repeat(7)}</tr>`;
+    prevM=null;
+    piece.forEach(e=>{const m=e.date.slice(5,7); html+=paperRow(e,m!==prevM); prevM=m;});
+    for(let i=piece.length;i<5;i++)html+=blank();
+    html+=`</tbody></table>`;
+    html+=`<div class="pfoot2"><div>備註:</div><div class="rowx"><span>*務必附上簽單聯核對工程用*</span><span class="total">總計金額:＝ ${totalTxt}</span></div><div>審核人員:</div></div>`;
+  }else{
+    html=`<div class="pname">${esc(S.name)}</div><div class="prange">${r.y}年　${r.m}月　1日　至　${r.m}月　${last}日</div><table>${cols}${head}<tbody>`;
+    let prevM=null;
+    rows.forEach(e=>{const m=e.date.slice(5,7); html+=paperRow(e,m!==prevM); prevM=m;});
+    for(let i=rows.length;i<12;i++)html+=blank();
+    html+=`</tbody></table>`;
+    html+=`<div class="pfoot"><span>備註:<br>*務必附上簽單聯核對工程用*審核人員:</span><span class="total">總計金額:＝ ${totalTxt}</span></div>`;
+  }
+  photoList(view).forEach(p=>{const d=Number(p.e.date.slice(8)); html+=`<div class="photopage"><div class="pcap">${r.m}/${d}　${esc(p.e.place)}　照片${p.i+1}</div><img src="${p.m.data}" alt=""></div>`;});
+  $('paper').innerHTML=html;
+  $('reportTitle').textContent=r.y+'年'+r.m+'月結表';
+  document.title=S.name+' '+r.y+'年'+r.m+'月 工時表';
+}
+$('btnReport').addEventListener('click',async()=>{await preloadPhotos(view);buildPaper();$('report').classList.add('open');});
+$('reportClose').addEventListener('click',()=>{$('report').classList.remove('open');document.title='ZL 工時本';});
+$('reportPrint').addEventListener('click',()=>{
+  buildPaper();
+  if(window.top!==window.self){alert('這個畫面被包在另一個頁面裡，iPhone 不會跳出列印。請用 Safari 直接打開網址（或從主畫面圖示開）再按一次。');return;}
+  setTimeout(()=>window.print(),50);
+  setTimeout(()=>{ if((state.lastChangeAt||0)>(state.lastBackupAt||0)) toast('月結表出好了，順便備份一份？','備份',backupToFile); },1500);
+});
+
+$('verTag').textContent='v'+APP_VERSION;
+render();
+/* ---------- photos (IndexedDB) ---------- */
+let formPhotos=[]; const photoCache=new Map();
+function pdb(){return new Promise((res,rej)=>{const r=indexedDB.open('zl-demo-photos',1);r.onupgradeneeded=()=>r.result.createObjectStore('p');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
+async function photoPut(id,dataUrl){try{const db=await pdb();await new Promise((res,rej)=>{const t=db.transaction('p','readwrite');t.objectStore('p').put(dataUrl,id);t.oncomplete=res;t.onerror=()=>rej(t.error);});photoCache.set(id,dataUrl);}catch(e){}}
+async function photoGet(id){if(photoCache.has(id))return photoCache.get(id);try{const db=await pdb();const v=await new Promise((res,rej)=>{const r=db.transaction('p').objectStore('p').get(id);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});if(v)photoCache.set(id,v);return v||null;}catch(e){return null;}}
+async function photoDel(id){photoCache.delete(id);try{const db=await pdb();await new Promise((res,rej)=>{const t=db.transaction('p','readwrite');t.objectStore('p').delete(id);t.oncomplete=res;t.onerror=()=>rej(t.error);});}catch(e){}}
+async function photoAll(){try{const db=await pdb();return await new Promise((res,rej)=>{const out={};const r=db.transaction('p').objectStore('p').openCursor();r.onsuccess=()=>{const c=r.result;if(c){out[c.key]=c.value;c.continue();}else res(out);};r.onerror=()=>rej(r.error);});}catch(e){return {};}}
+function shrinkImage(file,max=1600,q=.82){return new Promise((res,rej)=>{const url=URL.createObjectURL(file);const img=new Image();img.onload=()=>{let w=img.naturalWidth,h=img.naturalHeight;const k=Math.min(1,max/Math.max(w,h));w=Math.round(w*k);h=Math.round(h*k);const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);URL.revokeObjectURL(url);res(c.toDataURL('image/jpeg',q));};img.onerror=()=>{URL.revokeObjectURL(url);rej(new Error('bad image'));};img.src=url;});}
+async function renderFormPhotos(){
+  const box=$('fPhotos'); box.innerHTML='';
+  for(const id of formPhotos){const b=document.createElement('button');b.type='button';b.className='ph';const img=document.createElement('img');b.appendChild(img);box.appendChild(b);photoGet(id).then(d=>{if(d)img.src=d;});b.addEventListener('click',()=>openViewer(id));}
+  const add=document.createElement('button');add.type='button';add.className='add';add.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>加照片';
+  add.addEventListener('click',()=>$('fPhotoFile').click()); box.appendChild(add);
+}
+$('fPhotoFile').addEventListener('change',async ev=>{
+  const files=[...ev.target.files]; ev.target.value=''; if(!files.length)return;
+  for(const f of files){try{const d=await shrinkImage(f);const id='p'+uid();await photoPut(id,d);formPhotos.push(id);}catch(e){toast('這張圖讀不進來');}}
+  renderFormPhotos();
+});
+let viewing=null;
+async function openViewer(id){viewing=id;$('vImg').src='';$('vImg').src=(await photoGet(id))||'';$('vTitle').textContent=($('fPlace').value||'').slice(0,18);$('viewer').classList.add('open');}
+function closeViewer(){$('viewer').classList.remove('open');viewing=null;}
+$('vClose').addEventListener('click',closeViewer);
+$('vDel').addEventListener('click',()=>{if(!viewing)return;const id=viewing;formPhotos=formPhotos.filter(x=>x!==id);closeViewer();renderFormPhotos();toast('已移除照片（儲存後生效）');});
+// 表單取消時，把這次新加但沒存的照片清掉
+$('formCancel').addEventListener('click',()=>{const kept=new Set(editing?(editing.photos||[]):[]);formPhotos.forEach(id=>{if(!kept.has(id))photoDel(id);});formPhotos=[];});
+
+
+/* ---------- Excel export (company template) ---------- */
+const XLSX_STYLES="<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<styleSheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\" mc:Ignorable=\"x14ac x16r2\" xmlns:x14ac=\"http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac\" xmlns:x16r2=\"http://schemas.microsoft.com/office/spreadsheetml/2015/02/main\"><numFmts count=\"2\"><numFmt numFmtId=\"176\" formatCode=\"0;\\-0;0* \"/><numFmt numFmtId=\"177\" formatCode=\"00&quot;:&quot;00\"/></numFmts><fonts count=\"11\" x14ac:knownFonts=\"1\"><font><sz val=\"12\"/><color indexed=\"8\"/><name val=\"新細明體\"/><charset val=\"136\"/></font><font><b/><sz val=\"12\"/><color indexed=\"8\"/><name val=\"新細明體\"/><charset val=\"136\"/></font><font><sz val=\"10\"/><color indexed=\"8\"/><name val=\"新細明體\"/><charset val=\"136\"/></font><font><sz val=\"10\"/><color indexed=\"8\"/><name val=\"新細明體\"/><charset val=\"136\"/></font><font><sz val=\"12\"/><color indexed=\"8\"/><name val=\"新細明體\"/><charset val=\"136\"/></font><font><sz val=\"9\"/><name val=\"新細明體\"/><family val=\"1\"/><charset val=\"136\"/></font><font><sz val=\"22\"/><color indexed=\"8\"/><name val=\"微軟正黑體\"/><family val=\"2\"/><charset val=\"136\"/></font><font><sz val=\"9\"/><name val=\"新細明體\"/><charset val=\"136\"/></font><font><sz val=\"12\"/><color indexed=\"8\"/><name val=\"微軟正黑體\"/><family val=\"2\"/><charset val=\"136\"/></font><font><sz val=\"10\"/><color indexed=\"8\"/><name val=\"微軟正黑體\"/><family val=\"2\"/><charset val=\"136\"/></font><font><b/><sz val=\"12\"/><color indexed=\"8\"/><name val=\"微軟正黑體\"/><family val=\"2\"/><charset val=\"136\"/></font></fonts><fills count=\"3\"><fill><patternFill patternType=\"none\"/></fill><fill><patternFill patternType=\"gray125\"/></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FFFFFF00\"/><bgColor indexed=\"64\"/></patternFill></fill></fills><borders count=\"16\"><border><left/><right/><top/><bottom/><diagonal/></border><border><left/><right/><top/><bottom style=\"thin\"><color indexed=\"64\"/></bottom><diagonal/></border><border><left style=\"thin\"><color indexed=\"64\"/></left><right style=\"thin\"><color indexed=\"64\"/></right><top style=\"thin\"><color indexed=\"64\"/></top><bottom style=\"thin\"><color indexed=\"64\"/></bottom><diagonal/></border><border><left style=\"thin\"><color indexed=\"64\"/></left><right style=\"thin\"><color indexed=\"64\"/></right><top/><bottom/><diagonal/></border><border><left/><right style=\"thin\"><color indexed=\"64\"/></right><top style=\"thin\"><color indexed=\"64\"/></top><bottom/><diagonal/></border><border><left style=\"thin\"><color indexed=\"64\"/></left><right/><top style=\"thin\"><color indexed=\"64\"/></top><bottom/><diagonal/></border><border><left/><right/><top style=\"thin\"><color indexed=\"64\"/></top><bottom/><diagonal/></border><border><left/><right style=\"thin\"><color indexed=\"64\"/></right><top/><bottom/><diagonal/></border><border><left style=\"thin\"><color indexed=\"64\"/></left><right/><top/><bottom/><diagonal/></border><border><left style=\"thin\"><color indexed=\"64\"/></left><right/><top/><bottom style=\"thin\"><color indexed=\"64\"/></bottom><diagonal/></border><border><left/><right style=\"thin\"><color indexed=\"64\"/></right><top/><bottom style=\"thin\"><color indexed=\"64\"/></bottom><diagonal/></border><border><left style=\"thin\"><color indexed=\"64\"/></left><right style=\"thin\"><color indexed=\"64\"/></right><top style=\"thin\"><color indexed=\"64\"/></top><bottom/><diagonal/></border><border><left style=\"thin\"><color indexed=\"64\"/></left><right style=\"thin\"><color indexed=\"64\"/></right><top/><bottom style=\"thin\"><color indexed=\"64\"/></bottom><diagonal/></border><border><left style=\"thin\"><color indexed=\"64\"/></left><right/><top style=\"thin\"><color indexed=\"64\"/></top><bottom style=\"thin\"><color indexed=\"64\"/></bottom><diagonal/></border><border><left/><right/><top style=\"thin\"><color indexed=\"64\"/></top><bottom style=\"thin\"><color indexed=\"64\"/></bottom><diagonal/></border><border><left/><right style=\"thin\"><color indexed=\"64\"/></right><top style=\"thin\"><color indexed=\"64\"/></top><bottom style=\"thin\"><color indexed=\"64\"/></bottom><diagonal/></border></borders><cellStyleXfs count=\"1\"><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\"><alignment vertical=\"center\"/></xf></cellStyleXfs><cellXfs count=\"76\"><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\" xfId=\"0\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"1\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyFont=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"2\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"3\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"3\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyBorder=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"4\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"177\" fontId=\"0\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyNumberFormat=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"176\" fontId=\"0\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyNumberFormat=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"left\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyNumberFormat=\"1\" applyBorder=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"176\" fontId=\"0\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyNumberFormat=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"right\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"3\" xfId=\"0\" applyFill=\"1\" applyBorder=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"1\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"20\" fontId=\"0\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyNumberFormat=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"5\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"6\" xfId=\"0\" applyBorder=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"8\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"9\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"1\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"4\" xfId=\"0\" applyBorder=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"4\" fillId=\"0\" borderId=\"7\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"10\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"7\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"176\" fontId=\"0\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyNumberFormat=\"1\" applyBorder=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"4\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"left\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyFont=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"9\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"9\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"177\" fontId=\"8\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyNumberFormat=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"176\" fontId=\"8\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyNumberFormat=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"right\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyNumberFormat=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"2\" borderId=\"2\" xfId=\"0\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"2\" borderId=\"2\" xfId=\"0\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"20\" fontId=\"8\" fillId=\"2\" borderId=\"2\" xfId=\"0\" applyNumberFormat=\"1\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"176\" fontId=\"8\" fillId=\"2\" borderId=\"2\" xfId=\"0\" applyNumberFormat=\"1\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"right\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"2\" borderId=\"2\" xfId=\"0\" applyNumberFormat=\"1\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"10\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyFont=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"20\" fontId=\"8\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyNumberFormat=\"1\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"right\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"2\" borderId=\"2\" xfId=\"0\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"right\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"11\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"5\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"6\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"4\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"8\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"9\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"1\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"10\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyAlignment=\"1\"><alignment horizontal=\"right\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"7\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"left\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"12\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"7\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"left\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"left\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"6\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"1\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"4\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"left\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"6\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"left\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"right\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"13\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"left\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"14\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"left\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"15\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"left\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"7\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"left\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"1\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"4\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"left\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"4\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\"><alignment vertical=\"center\"/></xf><xf numFmtId=\"20\" fontId=\"8\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyNumberFormat=\"1\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"center\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"2\" xfId=\"0\" applyFont=\"1\" applyFill=\"1\" applyBorder=\"1\" applyAlignment=\"1\"><alignment horizontal=\"right\" vertical=\"center\"/></xf><xf numFmtId=\"0\" fontId=\"8\" fillId=\"0\" borderId=\"0\" xfId=\"0\" applyFont=\"1\" applyFill=\"1\"><alignment vertical=\"center\"/></xf></cellXfs><cellStyles count=\"1\"><cellStyle name=\"一般\" xfId=\"0\" builtinId=\"0\"/></cellStyles><dxfs count=\"0\"/><tableStyles count=\"0\" defaultTableStyle=\"TableStyleMedium2\" defaultPivotStyle=\"PivotStyleLight16\"/><extLst><ext uri=\"{EB79DEF2-80B8-43e5-95BD-54CBDDF9020C}\" xmlns:x14=\"http://schemas.microsoft.com/office/spreadsheetml/2009/9/main\"><x14:slicerStyles defaultSlicerStyle=\"SlicerStyleLight1\"/></ext><ext uri=\"{9260A510-F301-46a8-8635-F512D64BE5F5}\" xmlns:x15=\"http://schemas.microsoft.com/office/spreadsheetml/2010/11/main\"><x15:timelineStyles defaultTimelineStyle=\"TimeSlicerStyleLight1\"/></ext></extLst></styleSheet>";
+const XLSX_THEME="<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<a:theme xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" name=\"Office 主题​​\"><a:themeElements><a:clrScheme name=\"Office\"><a:dk1><a:sysClr val=\"windowText\" lastClr=\"000000\"/></a:dk1><a:lt1><a:sysClr val=\"window\" lastClr=\"FFFFFF\"/></a:lt1><a:dk2><a:srgbClr val=\"1F497D\"/></a:dk2><a:lt2><a:srgbClr val=\"EEECE1\"/></a:lt2><a:accent1><a:srgbClr val=\"4F81BD\"/></a:accent1><a:accent2><a:srgbClr val=\"C0504D\"/></a:accent2><a:accent3><a:srgbClr val=\"9BBB59\"/></a:accent3><a:accent4><a:srgbClr val=\"8064A2\"/></a:accent4><a:accent5><a:srgbClr val=\"4BACC6\"/></a:accent5><a:accent6><a:srgbClr val=\"F79646\"/></a:accent6><a:hlink><a:srgbClr val=\"0000FF\"/></a:hlink><a:folHlink><a:srgbClr val=\"800080\"/></a:folHlink></a:clrScheme><a:fontScheme name=\"Office\"><a:majorFont><a:latin typeface=\"Cambria\"/><a:ea typeface=\"\"/><a:cs typeface=\"\"/><a:font script=\"Arab\" typeface=\"Times New Roman\"/><a:font script=\"Beng\" typeface=\"Vrinda\"/><a:font script=\"Cans\" typeface=\"Euphemia\"/><a:font script=\"Cher\" typeface=\"Plantagenet Cherokee\"/><a:font script=\"Deva\" typeface=\"Mangal\"/><a:font script=\"Ethi\" typeface=\"Nyala\"/><a:font script=\"Geor\" typeface=\"Sylfaen\"/><a:font script=\"Gujr\" typeface=\"Shruti\"/><a:font script=\"Guru\" typeface=\"Raavi\"/><a:font script=\"Hang\" typeface=\"맑은 고딕\"/><a:font script=\"Hans\" typeface=\"宋体\"/><a:font script=\"Hant\" typeface=\"新細明體\"/><a:font script=\"Hebr\" typeface=\"Times New Roman\"/><a:font script=\"Jpan\" typeface=\"ＭＳ Ｐゴシック\"/><a:font script=\"Khmr\" typeface=\"MoolBoran\"/><a:font script=\"Knda\" typeface=\"Tunga\"/><a:font script=\"Laoo\" typeface=\"DokChampa\"/><a:font script=\"Mlym\" typeface=\"Kartika\"/><a:font script=\"Mong\" typeface=\"Mongolian Baiti\"/><a:font script=\"Orya\" typeface=\"Kalinga\"/><a:font script=\"Sinh\" typeface=\"Iskoola Pota\"/><a:font script=\"Syrc\" typeface=\"Estrangelo Edessa\"/><a:font script=\"Taml\" typeface=\"Latha\"/><a:font script=\"Telu\" typeface=\"Gautami\"/><a:font script=\"Thaa\" typeface=\"MV Boli\"/><a:font script=\"Thai\" typeface=\"Tahoma\"/><a:font script=\"Tibt\" typeface=\"Microsoft Himalaya\"/><a:font script=\"Uigh\" typeface=\"Microsoft Uighur\"/><a:font script=\"Viet\" typeface=\"Times New Roman\"/><a:font script=\"Yiii\" typeface=\"Microsoft Yi Baiti\"/></a:majorFont><a:minorFont><a:latin typeface=\"Calibri\"/><a:ea typeface=\"\"/><a:cs typeface=\"\"/><a:font script=\"Arab\" typeface=\"Arial\"/><a:font script=\"Beng\" typeface=\"Vrinda\"/><a:font script=\"Cans\" typeface=\"Euphemia\"/><a:font script=\"Cher\" typeface=\"Plantagenet Cherokee\"/><a:font script=\"Deva\" typeface=\"Mangal\"/><a:font script=\"Ethi\" typeface=\"Nyala\"/><a:font script=\"Geor\" typeface=\"Sylfaen\"/><a:font script=\"Gujr\" typeface=\"Shruti\"/><a:font script=\"Guru\" typeface=\"Raavi\"/><a:font script=\"Hang\" typeface=\"맑은 고딕\"/><a:font script=\"Hans\" typeface=\"宋体\"/><a:font script=\"Hant\" typeface=\"新細明體\"/><a:font script=\"Hebr\" typeface=\"Arial\"/><a:font script=\"Jpan\" typeface=\"ＭＳ Ｐゴシック\"/><a:font script=\"Khmr\" typeface=\"DaunPenh\"/><a:font script=\"Knda\" typeface=\"Tunga\"/><a:font script=\"Laoo\" typeface=\"DokChampa\"/><a:font script=\"Mlym\" typeface=\"Kartika\"/><a:font script=\"Mong\" typeface=\"Mongolian Baiti\"/><a:font script=\"Orya\" typeface=\"Kalinga\"/><a:font script=\"Sinh\" typeface=\"Iskoola Pota\"/><a:font script=\"Syrc\" typeface=\"Estrangelo Edessa\"/><a:font script=\"Taml\" typeface=\"Latha\"/><a:font script=\"Telu\" typeface=\"Gautami\"/><a:font script=\"Thaa\" typeface=\"MV Boli\"/><a:font script=\"Thai\" typeface=\"Tahoma\"/><a:font script=\"Tibt\" typeface=\"Microsoft Himalaya\"/><a:font script=\"Uigh\" typeface=\"Microsoft Uighur\"/><a:font script=\"Viet\" typeface=\"Arial\"/><a:font script=\"Yiii\" typeface=\"Microsoft Yi Baiti\"/></a:minorFont></a:fontScheme><a:fmtScheme name=\"Office\"><a:fillStyleLst><a:solidFill><a:schemeClr val=\"phClr\"/></a:solidFill><a:gradFill rotWithShape=\"1\"><a:gsLst><a:gs pos=\"0\"><a:schemeClr val=\"phClr\"><a:tint val=\"50000\"/><a:satMod val=\"300000\"/></a:schemeClr></a:gs><a:gs pos=\"35000\"><a:schemeClr val=\"phClr\"><a:tint val=\"37000\"/><a:satMod val=\"300000\"/></a:schemeClr></a:gs><a:gs pos=\"100000\"><a:schemeClr val=\"phClr\"><a:tint val=\"15000\"/><a:satMod val=\"350000\"/></a:schemeClr></a:gs></a:gsLst><a:lin ang=\"16200000\" scaled=\"1\"/></a:gradFill><a:gradFill rotWithShape=\"1\"><a:gsLst><a:gs pos=\"0\"><a:schemeClr val=\"phClr\"><a:shade val=\"51000\"/><a:satMod val=\"130000\"/></a:schemeClr></a:gs><a:gs pos=\"80000\"><a:schemeClr val=\"phClr\"><a:shade val=\"93000\"/><a:satMod val=\"130000\"/></a:schemeClr></a:gs><a:gs pos=\"100000\"><a:schemeClr val=\"phClr\"><a:shade val=\"94000\"/><a:satMod val=\"135000\"/></a:schemeClr></a:gs></a:gsLst><a:lin ang=\"16200000\" scaled=\"0\"/></a:gradFill></a:fillStyleLst><a:lnStyleLst><a:ln w=\"9525\" cap=\"flat\" cmpd=\"sng\" algn=\"ctr\"><a:solidFill><a:schemeClr val=\"phClr\"><a:shade val=\"95000\"/><a:satMod val=\"105000\"/></a:schemeClr></a:solidFill><a:prstDash val=\"solid\"/></a:ln><a:ln w=\"25400\" cap=\"flat\" cmpd=\"sng\" algn=\"ctr\"><a:solidFill><a:schemeClr val=\"phClr\"/></a:solidFill><a:prstDash val=\"solid\"/></a:ln><a:ln w=\"38100\" cap=\"flat\" cmpd=\"sng\" algn=\"ctr\"><a:solidFill><a:schemeClr val=\"phClr\"/></a:solidFill><a:prstDash val=\"solid\"/></a:ln></a:lnStyleLst><a:effectStyleLst><a:effectStyle><a:effectLst><a:outerShdw blurRad=\"40000\" dist=\"20000\" dir=\"5400000\" rotWithShape=\"0\"><a:srgbClr val=\"000000\"><a:alpha val=\"38000\"/></a:srgbClr></a:outerShdw></a:effectLst></a:effectStyle><a:effectStyle><a:effectLst><a:outerShdw blurRad=\"40000\" dist=\"23000\" dir=\"5400000\" rotWithShape=\"0\"><a:srgbClr val=\"000000\"><a:alpha val=\"35000\"/></a:srgbClr></a:outerShdw></a:effectLst></a:effectStyle><a:effectStyle><a:effectLst><a:outerShdw blurRad=\"40000\" dist=\"23000\" dir=\"5400000\" rotWithShape=\"0\"><a:srgbClr val=\"000000\"><a:alpha val=\"35000\"/></a:srgbClr></a:outerShdw></a:effectLst><a:scene3d><a:camera prst=\"orthographicFront\"><a:rot lat=\"0\" lon=\"0\" rev=\"0\"/></a:camera><a:lightRig rig=\"threePt\" dir=\"t\"><a:rot lat=\"0\" lon=\"0\" rev=\"1200000\"/></a:lightRig></a:scene3d><a:sp3d><a:bevelT w=\"63500\" h=\"25400\"/></a:sp3d></a:effectStyle></a:effectStyleLst><a:bgFillStyleLst><a:solidFill><a:schemeClr val=\"phClr\"/></a:solidFill><a:gradFill rotWithShape=\"1\"><a:gsLst><a:gs pos=\"0\"><a:schemeClr val=\"phClr\"><a:tint val=\"40000\"/><a:satMod val=\"350000\"/></a:schemeClr></a:gs><a:gs pos=\"40000\"><a:schemeClr val=\"phClr\"><a:tint val=\"45000\"/><a:satMod val=\"350000\"/><a:shade val=\"99000\"/></a:schemeClr></a:gs><a:gs pos=\"100000\"><a:schemeClr val=\"phClr\"><a:shade val=\"20000\"/><a:satMod val=\"255000\"/></a:schemeClr></a:gs></a:gsLst><a:path path=\"circle\"><a:fillToRect l=\"50000\" t=\"-80000\" r=\"50000\" b=\"180000\"/></a:path></a:gradFill><a:gradFill rotWithShape=\"1\"><a:gsLst><a:gs pos=\"0\"><a:schemeClr val=\"phClr\"><a:tint val=\"80000\"/><a:satMod val=\"300000\"/></a:schemeClr></a:gs><a:gs pos=\"100000\"><a:schemeClr val=\"phClr\"><a:shade val=\"30000\"/><a:satMod val=\"200000\"/></a:schemeClr></a:gs></a:gsLst><a:path path=\"circle\"><a:fillToRect l=\"50000\" t=\"50000\" r=\"50000\" b=\"50000\"/></a:path></a:gradFill></a:bgFillStyleLst></a:fmtScheme></a:themeElements><a:objectDefaults><a:spDef><a:spPr><a:xfrm><a:off x=\"0\" y=\"0\"/><a:ext cx=\"0\" cy=\"0\"/></a:xfrm><a:custGeom><a:avLst/><a:gdLst><a:gd name=\"_h\" fmla=\"val 21600\"/><a:gd name=\"_w\" fmla=\"val 21600\"/></a:gdLst><a:ahLst/><a:cxnLst/><a:rect l=\"0\" t=\"0\" r=\"0\" b=\"0\"/><a:pathLst><a:path w=\"21600\" h=\"21600\"/></a:pathLst></a:custGeom><a:gradFill rotWithShape=\"0\"><a:gsLst><a:gs pos=\"100000\"><a:srgbClr val=\"9CBEE0\"/></a:gs><a:gs pos=\"0\"><a:srgbClr val=\"BBD5F0\"/></a:gs></a:gsLst><a:lin ang=\"5400000\" scaled=\"0\"/></a:gradFill><a:ln w=\"15875\" cap=\"flat\" cmpd=\"sng\" algn=\"ctr\"><a:solidFill><a:srgbClr val=\"739CC3\"/></a:solidFill><a:prstDash val=\"solid\"/><a:miter lim=\"200000\"/></a:ln></a:spPr><a:bodyPr/><a:lstStyle/></a:spDef></a:objectDefaults><a:extraClrSchemeLst/></a:theme>";
+const XLSX_SHEET_HEAD="<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" xmlns:mc=\"http://schemas.openxmlformats.org/markup-compatibility/2006\" mc:Ignorable=\"x14ac\" xmlns:x14ac=\"http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac\"><sheetPr><pageSetUpPr fitToPage=\"1\"/></sheetPr><dimension ref=\"A1:J40\"/><sheetViews><sheetView tabSelected=\"1\" zoomScale=\"110\" zoomScaleNormal=\"110\" workbookViewId=\"0\"><selection activeCell=\"A1\" sqref=\"A1\"/></sheetView></sheetViews><sheetFormatPr defaultColWidth=\"8.5\" defaultRowHeight=\"15.75\" x14ac:dyDescent=\"0.25\"/><cols><col min=\"1\" max=\"1\" width=\"4.125\" style=\"27\" customWidth=\"1\"/><col min=\"2\" max=\"2\" width=\"3.75\" style=\"27\" customWidth=\"1\"/><col min=\"3\" max=\"3\" width=\"40.5\" style=\"27\" customWidth=\"1\"/><col min=\"4\" max=\"5\" width=\"9.75\" style=\"44\" customWidth=\"1\"/><col min=\"6\" max=\"6\" width=\"5.75\" style=\"54\" customWidth=\"1\"/><col min=\"7\" max=\"7\" width=\"7.75\" style=\"27\" customWidth=\"1\"/><col min=\"8\" max=\"8\" width=\"7.25\" style=\"27\" customWidth=\"1\"/><col min=\"9\" max=\"9\" width=\"7.125\" style=\"27\" customWidth=\"1\"/><col min=\"10\" max=\"10\" width=\"10.125\" style=\"27\" customWidth=\"1\"/><col min=\"11\" max=\"16384\" width=\"8.5\" style=\"27\"/></cols>";
+const XLSX_SHEET_TAIL="__MERGES__<phoneticPr fontId=\"5\" type=\"noConversion\"/><printOptions horizontalCentered=\"1\"/><pageMargins left=\"0\" right=\"0\" top=\"0\" bottom=\"0.15748031496062992\" header=\"0.51181102362204722\" footer=\"0.51181102362204722\"/><pageSetup paperSize=\"9\" fitToWidth=\"1\" fitToHeight=\"0\" orientation=\"portrait\" horizontalDpi=\"300\" verticalDpi=\"300\"/></worksheet>";
+function xesc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function xcell(ref,s,v){
+  if(v===''||v==null)return `<c r="${ref}" s="${s}"/>`;
+  if(typeof v==='number')return `<c r="${ref}" s="${s}"><v>${v}</v></c>`;
+  if(v&&v.f)return `<c r="${ref}" s="${s}"><f>${v.f}</f>${v.v!=null?`<v>${v.v}</v>`:''}</c>`;
+  return `<c r="${ref}" s="${s}" t="inlineStr"><is><t xml:space="preserve">${xesc(v)}</t></is></c>`;
+}
+function xrow(r,cells,extra){return `<row r="${r}" spans="1:10" ht="23.25" customHeight="1"${extra||''}>`+cells.join('')+'</row>';}
+function xnum(t){return /^-?\d+(\.\d+)?$/.test(String(t).trim())?Number(t):String(t);}
+function buildXlsxSheet(ym){
+  const rows=monthEntries(ym).filter(e=>e.tag!=='other'); const r=roc(ym); const S=state.settings;
+  const work=rows.filter(e=>e.mode!=='piece'), piece=rows.filter(e=>e.mode==='piece');
+  const L='ABCDEFGHIJ'; const out=[]; const merges=[];
+  const bigRow=(n,text,s,ht)=>`<row r="${n}" spans="1:10" ht="${ht}" customHeight="1">`+L.split('').map((c,i)=>i===0?xcell(c+n,s,text):`<c r="${c}${n}" s="${s}"/>`).join('')+'</row>';
+  out.push(bigRow(1,S.name,59,'32.25')); merges.push(`A1:J1`);
+  out.push(bigRow(2,`${r.y}年${r.m}月份`,60,'26.25')); merges.push(`A2:J2`);
+  const hdr=['月','日','施工地點  /  展別','出勤時間    起','出勤時間    止','休息','總時數','加班時數    段','單價','申請金額'];
+  out.push(`<row r="3" spans="1:10" ht="27">`+hdr.map((h,i)=>xcell(L[i]+'3',[28,29,29,28,28,29,29,28,29,29][i],h)).join('')+'</row>');
+  let n=4; let prevM=null;
+  const dataRow=(e)=>{
+    const c=compute(e); const m=Number(e.date.slice(5,7)), d=Number(e.date.slice(8));
+    const hours=e.mode==='piece'?(c.hoursText||''):xnum(c.hoursText||''); const rate=xnum(c.rateText||''); const amt=xnum(c.amountText||'');
+    let J=amt; if(typeof hours==='number'&&typeof rate==='number'&&typeof amt==='number'&&Math.abs(hours*rate-amt)<0.01)J={f:`G${n}*I${n}`,v:amt};
+    const cells=[xcell('A'+n,30,m!==prevM?m:''),xcell('B'+n,30,d),xcell('C'+n,31,e.place),xcell('D'+n,32,e.mode==='piece'?'':e.start),xcell('E'+n,32,e.mode==='piece'?'':e.end),xcell('F'+n,33,c.restText||''),xcell('G'+n,34,hours),xcell('H'+n,30,e.overtime||''),xcell('I'+n,30,rate),xcell('J'+n,34,J)];
+    prevM=m; out.push(xrow(n,cells)); n++;
+  };
+  const blankRow=(st)=>{out.push(xrow(n,L.split('').map((c,i)=>`<c r="${c}${n}" s="${st[i]}"/>`)));n++;};
+  const stA=[30,30,31,32,32,33,34,30,30,34], stB=[35,35,72,73,73,74,35,35,35,35];
+  work.forEach(dataRow);
+  for(let i=work.length;i<15;i++)blankRow(stB);
+  blankRow([30,30,31,42,42,43,30,30,30,30]);
+  // 攤位計件 header
+  out.push(xrow(n,[xcell('A'+n,64,'攤位計件'),`<c r="B${n}" s="65"/>`,`<c r="C${n}" s="66"/>`,`<c r="D${n}" s="42"/>`,`<c r="E${n}" s="42"/>`,`<c r="F${n}" s="43"/>`,`<c r="G${n}" s="30"/>`,`<c r="H${n}" s="30"/>`,`<c r="I${n}" s="30"/>`,`<c r="J${n}" s="30"/>`])); merges.push(`A${n}:C${n}`); n++;
+  const firstData=4; prevM=null;
+  piece.forEach(dataRow);
+  for(let i=piece.length;i<3;i++)blankRow(stA);
+  blankRow([30,30,31,42,42,43,31,31,31,31]);
+  blankRow([31,31,31,42,42,43,46,46,46,46]);
+  const lastData=n-1;
+  out.push(xrow(n,[xcell('A'+n,61,'備註:'),`<c r="B${n}" s="61"/>`,`<c r="C${n}" s="61"/>`,`<c r="D${n}" s="61"/>`,`<c r="E${n}" s="61"/>`,`<c r="F${n}" s="62"/>`,`<c r="G${n}" s="47"/>`,`<c r="H${n}" s="48"/>`,`<c r="I${n}" s="48"/>`,`<c r="J${n}" s="49"/>`])); merges.push(`A${n}:F${n}`); n++;
+  let total=0; rows.forEach(e=>{total+=compute(e).amountNum;});
+  out.push(xrow(n,[xcell('A'+n,57,'*務必附上簽單聯核對工程用*'),`<c r="B${n}" s="57"/>`,`<c r="C${n}" s="57"/>`,`<c r="D${n}" s="57"/>`,`<c r="E${n}" s="57"/>`,`<c r="F${n}" s="58"/>`,`<c r="G${n}" s="50"/>`,xcell('H'+n,63,'總計金額:='),`<c r="I${n}" s="63"/>`,xcell('J'+n,55,{f:`SUM(J${firstData}:J${lastData})`,v:total})])); merges.push(`A${n}:F${n}`,`H${n}:I${n}`); n++;
+  out.push(xrow(n,[xcell('A'+n,57,'審核人員:'),`<c r="B${n}" s="57"/>`,`<c r="C${n}" s="57"/>`,`<c r="D${n}" s="57"/>`,`<c r="E${n}" s="57"/>`,`<c r="F${n}" s="58"/>`,`<c r="G${n}" s="51"/>`,`<c r="H${n}" s="52"/>`,`<c r="I${n}" s="52"/>`,`<c r="J${n}" s="53"/>`])); merges.push(`A${n}:F${n}`); n++;
+  const mergeXml=`<mergeCells count="${merges.length}">`+merges.map(m=>`<mergeCell ref="${m}"/>`).join('')+'</mergeCells>';
+  return XLSX_SHEET_HEAD+'<sheetData>'+out.join('')+'</sheetData>'+XLSX_SHEET_TAIL.replace('__MERGES__',mergeXml);
+}
+/* minimal ZIP (stored) */
+const CRC_T=(()=>{const t=new Uint32Array(256);for(let i=0;i<256;i++){let c=i;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[i]=c>>>0;}return t;})();
+function crc32(b){let c=0xFFFFFFFF;for(let i=0;i<b.length;i++)c=CRC_T[(c^b[i])&255]^(c>>>8);return (c^0xFFFFFFFF)>>>0;}
+function makeZip(files){
+  const enc=new TextEncoder(); const parts=[]; const cds=[]; let off=0;
+  const u16=v=>[v&255,(v>>8)&255], u32=v=>[v&255,(v>>8)&255,(v>>16)&255,(v>>>24)&255];
+  for(const [name,text] of files){
+    const nb=enc.encode(name), data=(text instanceof Uint8Array)?text:enc.encode(text), crc=crc32(data);
+    const hdr=new Uint8Array([0x50,0x4b,3,4,...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0),...u32(crc),...u32(data.length),...u32(data.length),...u16(nb.length),...u16(0)]);
+    parts.push(hdr,nb,data);
+    cds.push(new Uint8Array([0x50,0x4b,1,2,...u16(20),...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0),...u32(crc),...u32(data.length),...u32(data.length),...u16(nb.length),...u16(0),...u16(0),...u16(0),...u16(0),...u32(0),...u32(off)]),nb);
+    off+=hdr.length+nb.length+data.length;
+  }
+  const cdStart=off; let cdLen=0; cds.forEach(c=>cdLen+=c.length);
+  const end=new Uint8Array([0x50,0x4b,5,6,...u16(0),...u16(0),...u16(files.length),...u16(files.length),...u32(cdLen),...u32(cdStart),...u16(0)]);
+  return new Blob([...parts,...cds,end],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+}
+function b64bytes(dataUrl){const b=atob(dataUrl.split(',')[1]);const u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u;}
+function buildPhotoSheet(ym){
+  const list=photoList(ym); if(!list.length)return null; const r=roc(ym);
+  const EMU=9525, MAXW=640, ROWPX=20; let row=0; const rowsXml=[], anchors=[], rels=[], media=[];
+  const cap=(n,t)=>rowsXml.push(`<row r="${n}"><c r="A${n}" t="inlineStr"><is><t xml:space="preserve">${xesc(t)}</t></is></c></row>`);
+  cap(++row,`${r.y}年${r.m}月 照片備註`); row++;
+  list.forEach((p,k)=>{
+    const d=Number(p.e.date.slice(8)); cap(++row,`${r.m}/${d}　${p.e.place}　照片${p.i+1}`);
+    const sc=Math.min(1,MAXW/p.m.w), w=Math.round(p.m.w*sc), h=Math.round(p.m.h*sc);
+    const id=k+1;
+    anchors.push(`<xdr:oneCellAnchor><xdr:from><xdr:col>0</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${row+1}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from><xdr:ext cx="${w*EMU}" cy="${h*EMU}"/><xdr:pic><xdr:nvPicPr><xdr:cNvPr id="${id+1}" name="照片 ${id}"/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr><xdr:blipFill><a:blip r:embed="rId${id}"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill><xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${w*EMU}" cy="${h*EMU}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic><xdr:clientData/></xdr:oneCellAnchor>`);
+    rels.push(`<Relationship Id="rId${id}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image${id}.jpeg"/>`);
+    media.push([`xl/media/image${id}.jpeg`,b64bytes(p.m.data)]);
+    row+=Math.ceil(h/ROWPX)+3;
+  });
+  const sheet=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetFormatPr defaultRowHeight="15"/><cols><col min="1" max="1" width="90" customWidth="1"/></cols><sheetData>${rowsXml.join('')}</sheetData><pageMargins left="0.4" right="0.4" top="0.5" bottom="0.5" header="0.3" footer="0.3"/><pageSetup paperSize="9" orientation="portrait" fitToWidth="1" fitToHeight="0"/><drawing r:id="rId1"/></worksheet>`;
+  const drawing=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">${anchors.join('')}</xdr:wsDr>`;
+  const drawingRels=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${rels.join('')}</Relationships>`;
+  const sheetRels=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/></Relationships>`;
+  return {sheet,drawing,drawingRels,sheetRels,media};
+}
+function buildXlsx(ym){
+  const ph=buildPhotoSheet(ym);
+  const ct=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${ph?'<Default Extension="jpeg" ContentType="image/jpeg"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>':''}</Types>`;
+  const rels=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`;
+  const wb=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><bookViews><workbookView xWindow="0" yWindow="0" windowWidth="28800" windowHeight="11760"/></bookViews><sheets><sheet name="工時表" sheetId="1" r:id="rId1"/>${ph?'<sheet name="照片" sheetId="2" r:id="rId4"/>':''}</sheets><calcPr calcId="162913" fullCalcOnLoad="1"/></workbook>`;
+  const wbrels=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="theme/theme1.xml"/>${ph?'<Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/>':''}</Relationships>`;
+  const files=[['[Content_Types].xml',ct],['_rels/.rels',rels],['xl/workbook.xml',wb],['xl/_rels/workbook.xml.rels',wbrels],['xl/styles.xml',XLSX_STYLES],['xl/theme/theme1.xml',XLSX_THEME],['xl/worksheets/sheet1.xml',buildXlsxSheet(ym)]];
+  if(ph)files.push(['xl/worksheets/sheet2.xml',ph.sheet],['xl/worksheets/_rels/sheet2.xml.rels',ph.sheetRels],['xl/drawings/drawing1.xml',ph.drawing],['xl/drawings/_rels/drawing1.xml.rels',ph.drawingRels],...ph.media);
+  return makeZip(files);
+}
+async function downloadXlsx(){
+  const r=roc(view); const S=state.settings; const name=`${S.name}_${r.y}年${r.m}月_工時表.xlsx`;
+  await preloadPhotos(view); const blob=buildXlsx(view);
+  try{ const f=new File([blob],name,{type:blob.type}); if(navigator.share&&navigator.canShare&&navigator.canShare({files:[f]})){ await navigator.share({files:[f],title:name}); return; } }catch(e){ if(e&&e.name==='AbortError')return; }
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);
+}
+$('reportXlsx').addEventListener('click',downloadXlsx);
+
+/* ---------- cloud sync (Google Sheet via Apps Script) ---------- */
+let syncTimer=null, syncBusy=false;
+function syncCfg(){const c=state.sync||{};return (c.url&&c.token)?c:null;}
+function syncRows(){
+  return state.entries.filter(e=>!e.deleted).sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start)).map(e=>{const c=compute(e);return [e.stmt,e.date,e.tag==='other'?'其他雇主':'公司',e.place,e.mode==='piece'?'計件':e.mode==='flat'?'固定':'時薪',e.start,e.end,c.restText,c.hoursText,c.rateText,c.amountNum,e.overtime||'',(e.photos||[]).length,e.id];});
+}
+function scheduleSync(){ if(!syncCfg())return; clearTimeout(syncTimer); syncTimer=setTimeout(()=>syncPush(false),2500); }
+async function syncPush(manual){
+  const c=syncCfg(); if(!c||syncBusy)return; if(!navigator.onLine){renderSyncInfo('離線中，等有網路再傳');renderSyncPill();return;}
+  syncBusy=true; renderSyncInfo('同步中…');
+  try{
+    const payload={token:c.token,action:'push',state:{settings:state.settings,entries:state.entries,lastChangeAt:state.lastChangeAt,appVersion:APP_VERSION},rows:syncRows(),header:['結算月','日期','歸類','施工地點','計價','起','止','休息','總時數','單價','申請金額','加班時段','照片數','id']};
+    const r=await fetch(c.url,{method:'POST',body:JSON.stringify(payload)}); const j=await r.json();
+    if(!j.ok)throw new Error(j.error||'server');
+    state.sync=Object.assign({},state.sync,{lastPushAt:Date.now(),lastError:''}); state.syncDirty=false;
+    try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}
+    renderSyncInfo(); renderSyncPill(); if(manual)toast('已同步到 Google Sheet');
+  }catch(e){ state.sync=Object.assign({},state.sync,{lastError:String(e.message||e)}); try{localStorage.setItem(KEY,JSON.stringify(state));}catch(_){} renderSyncInfo(); renderSyncPill(); if(manual)toast('同步失敗：'+(e.message||e)); }
+  syncBusy=false;
+}
+async function syncPull(){
+  const c=syncCfg(); if(!c){toast('先填同步網址和密碼');return;}
+  if(!confirm('要用 Google Sheet 上的資料取代這支手機的紀錄嗎？（照片不受影響）'))return;
+  renderSyncInfo('下載中…');
+  try{
+    const r=await fetch(c.url+'?token='+encodeURIComponent(c.token)+'&action=pull&t='+Date.now()); const j=await r.json();
+    if(!j.ok||!j.state||!Array.isArray(j.state.entries))throw new Error(j.error||'雲端沒有資料');
+    const keep=state.sync; state=Object.assign(defaults(),{settings:Object.assign(defaults().settings,j.state.settings||{}),entries:j.state.entries,sample:false,sync:keep,lastChangeAt:j.state.lastChangeAt||Date.now()});
+    state.syncDirty=false; try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}
+    view=latestStmt()||view; closeSheets(); render(); toast('已從 Google Sheet 還原 '+state.entries.filter(e=>!e.deleted).length+' 筆');
+  }catch(e){ renderSyncInfo(); toast('還原失敗：'+(e.message||e)); }
+}
+function renderSyncInfo(msg){
+  const el=$('syncInfo'); if(!el)return; const c=state.sync||{};
+  const ob=$('btnOpenSheet'); if(ob){ob.hidden=!c.sheetUrl; if(c.sheetUrl)ob.href=c.sheetUrl;}
+  if(msg){el.textContent=msg;return;}
+  if(!syncCfg()){el.textContent='還沒設定。設定好之後每次新增／修改都會自動背景傳到 Google Sheet；沒網路會先排隊。';return;}
+  let t=c.lastPushAt?'上次同步：'+new Date(c.lastPushAt).toLocaleString('zh-TW'):'還沒同步過';
+  if(state.syncDirty)t+='（有變更還沒傳）'; if(c.lastError)t+='　上次錯誤：'+c.lastError;
+  el.textContent=t;
+}
+$('btnFeedback').addEventListener('click',()=>{$('fbName').value=$('fbName').value||state.settings.name||'';$('fbText').value='';closeSheets();openSheet('feedbackSheet');setTimeout(()=>$('fbText').focus(),250);});
+$('fbCancel').addEventListener('click',closeSheets);
+$('fbSend').addEventListener('click',async()=>{
+  const text=$('fbText').value.trim(); if(!text){toast('先寫一點內容');return;}
+  const c=syncCfg(); if(!c){toast('還沒連上 Google Sheet，先請 Yoona 給你同步連結');return;}
+  $('fbSend').disabled=true;
+  try{
+    const ctx=$('fbAttach').checked?monthEntries(view).map(e=>{const k=compute(e);return `${e.date} ${e.place} ${e.start||''}-${e.end||''} ${k.hoursText||''} ${k.rateText||''} =${k.amountText||'待補'}${e.tag==='other'?'（其他雇主）':''}`;}).join('\n'):'';
+    const r=await fetch(c.url,{method:'POST',body:JSON.stringify({token:c.token,action:'feedback',name:$('fbName').value.trim(),text,month:view,appVersion:APP_VERSION,ua:navigator.userAgent,context:ctx})});
+    const j=await r.json(); if(!j.ok)throw new Error(j.error||'server');
+    closeSheets(); toast('已送出，Yoona 會看到');
+  }catch(e){toast('送不出去：'+(e.message||e));}
+  $('fbSend').disabled=false;
+});
+$('btnOpenSheet').addEventListener('click',ev=>{const u=(state.sync&&state.sync.sheetUrl)||'';if(!u){ev.preventDefault();toast('還沒連上 Google Sheet，先點 Yoona 給的同步連結');return;}ev.preventDefault();const w=window.open(u,'_blank');if(!w)location.href=u;});
+$('btnSyncNow').addEventListener('click',()=>{state.sync=Object.assign({},state.sync||{},{url:$('sSyncUrl').value.trim(),token:$('sSyncToken').value.trim()});try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){} state.syncDirty=true; syncPush(true);});
+$('btnSyncPull').addEventListener('click',()=>{state.sync=Object.assign({},state.sync||{},{url:$('sSyncUrl').value.trim(),token:$('sSyncToken').value.trim()});syncPull();});
+window.addEventListener('online',()=>{if(state.syncDirty)scheduleSync();});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&state.syncDirty)scheduleSync();});
+// 一鍵設定：網址帶 #sync=base64(url|token)
+(function(){try{const m=location.hash.match(/#sync=([A-Za-z0-9+/=_-]+)/);if(m){const dec=decodeURIComponent(escape(atob(m[1].replace(/-/g,'+').replace(/_/g,'/'))));const [url,token,sheetUrl]=dec.split('|');if(url&&token){state.sync=Object.assign({},state.sync||{},{url,token,sheetUrl:sheetUrl||''});state.syncDirty=true;try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){} history.replaceState(null,'',location.pathname);setTimeout(()=>{toast('已連上 Google Sheet 同步');syncPush(true);},600);}}}catch(e){}})();
+if(state.syncDirty)setTimeout(()=>syncPush(false),1500);
+
+/* ---------- file backup ---------- */
+function backupName(){const d=new Date();return '工時本備份_'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'.json';}
+async function backupToFile(){
+  const used=new Set();state.entries.forEach(e=>(e.photos||[]).forEach(id=>used.add(id)));const all=await photoAll();const photos={};Object.keys(all).forEach(k=>{if(used.has(k))photos[k]=all[k];});
+  const txt=JSON.stringify(Object.assign({},state,{exportedAt:new Date().toISOString(),appVersion:APP_VERSION,photos}));
+  const blob=new Blob([txt],{type:'application/json'}); const name=backupName();
+  let ok=false;
+  try{ if(navigator.share&&navigator.canShare&&navigator.canShare({files:[new File([blob],name,{type:'application/json'})]})){ await navigator.share({files:[new File([blob],name,{type:'application/json'})],title:'工時本備份'}); ok=true; } }catch(e){ if(e&&e.name==='AbortError')return; }
+  if(!ok){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000); }
+  const lc=state.lastChangeAt; state.lastBackupAt=Date.now(); save(); state.lastChangeAt=lc; try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){} renderBackupBar(); toast('已備份：'+name);
+}
+function renderBackupBar(){
+  const bar=$('backupbar'); const n=state.entries.filter(e=>!e.deleted).length;
+  const last=state.lastBackupAt||0, days=last?Math.floor((Date.now()-last)/86400000):null;
+  const changedSince=(state.lastChangeAt||0)>last;
+  const cloud=!!syncCfg(); const hasPhotos=state.entries.some(e=>!e.deleted&&e.photos&&e.photos.length);
+  let show=false, msg='';
+  if(cloud){
+    // 紀錄都在雲端了；只有照片不在 Sheet 上，所以有照片時每 30 天提醒一次備份到檔案
+    if(hasPhotos&&changedSince&&(days===null||days>=30)){show=true;msg=days===null?'照片只存在這支手機，建議備份一份到「檔案」（紀錄本身已在雲端）':'照片只存在手機，已 '+days+' 天沒備份到「檔案」';}
+  }else{
+    show=n>0&&changedSince&&(days===null||days>=7);
+    msg=days===null?'還沒備份過，建議先備份一份到「檔案」':'已 '+days+' 天沒備份';
+  }
+  bar.hidden=!show; if(show)$('backupMsg').textContent=msg;
+  if($('backupInfo'))$('backupInfo').textContent=last?'上次備份：'+new Date(last).toLocaleString('zh-TW'):'還沒備份過。備份檔會存進 iPhone 的「檔案」app，就算圖示被刪掉也找得回來。';
+  renderSyncPill();
+}
+function renderSyncPill(){
+  const pill=$('syncPill'); if(!pill)return; const c=state.sync||{};
+  if(!syncCfg()){pill.hidden=true;return;}
+  pill.hidden=false;
+  const ico='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18a4 4 0 0 1-.6-7.95A6 6 0 0 1 18 8a4.5 4.5 0 0 1 0 9H7z"/></svg>';
+  if(state.syncDirty){const k=state.entries.filter(e=>(e.updatedAt||0)>(c.lastPushAt||0)).length; pill.className='pill quiet warn'; pill.innerHTML=ico+(k>0?k+' 筆待同步':'待同步')+(navigator.onLine?'':'（離線）');}
+  else{pill.className='pill quiet'; pill.innerHTML=ico+'已同步 '+(c.lastPushAt?new Date(c.lastPushAt).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}):'');}
+}
+$('syncPill').addEventListener('click',()=>{if(state.syncDirty){toast('重新同步中…');syncPush(true);}else toast('紀錄已經在 Google Sheet 上了');});
+$('btnExportFile').addEventListener('click',backupToFile);
+$('btnBackupNow').addEventListener('click',backupToFile);
+$('btnBackupTop').addEventListener('click',backupToFile);
+$('btnImportFile').addEventListener('click',()=>$('fileRestore').click());
+$('fileRestore').addEventListener('change',ev=>{const f=ev.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=()=>{try{const s=JSON.parse(r.result); if(!Array.isArray(s.entries))throw 0; if(!confirm('要用這個備份（'+s.entries.length+' 筆）取代目前的資料嗎？'))return; const ph=s.photos||{}; delete s.photos; state=Object.assign(defaults(),s,{settings:Object.assign(defaults().settings,s.settings||{})}); state.sample=false; save(); Object.keys(ph).forEach(k=>photoPut(k,ph[k])); view=latestStmt()||view; closeSheets(); render(); toast('已從檔案還原');}catch(e){alert('這個檔案不是有效的備份。');} ev.target.value='';}; r.readAsText(f);});
+/* ---------- update check + pull to refresh ---------- */
+function showUpdateBar(v){
+  if($('updatebar'))return;
+  const bar=document.createElement('div');bar.id='updatebar';bar.className='samplebar';bar.style.marginTop='10px';
+  bar.innerHTML='<span>有新版本（v'+v+'）</span><button id="btnUpdate">立即更新</button>';
+  document.querySelector('.monthnav').insertAdjacentElement('afterend',bar);
+  $('btnUpdate').addEventListener('click',()=>hardReload(v));
+}
+function hardReload(v){location.replace(location.pathname+'?v='+(v||APP_VERSION)+'&t='+Date.now());}
+async function checkUpdate(manual){
+  try{
+    const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'}); const v=await r.json();
+    if(v&&Number(v.version)>APP_VERSION){ showUpdateBar(v.version); if(manual)toast('有新版本 v'+v.version,'立即更新',()=>hardReload(v.version)); return true; }
+    if(manual)toast('已是最新版 v'+APP_VERSION);
+  }catch(e){ if(manual)toast('連不上伺服器，稍後再試'); }
+  return false;
+}
+$('verInfo').textContent='目前版本 v'+APP_VERSION;
+$('btnCheckUpdate').addEventListener('click',()=>checkUpdate(true));
+$('btnReload').addEventListener('click',()=>hardReload());
+checkUpdate(false);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')checkUpdate(false);});
+// pull to refresh (only when page is at the top and no sheet is open)
+(function(){
+  const ind=document.createElement('div');ind.className='ptr';ind.textContent='下拉重新整理';document.body.appendChild(ind);
+  let y0=null,pulling=false,dy=0;
+  document.addEventListener('touchstart',ev=>{ if(window.scrollY>0||document.querySelector('.sheet.open')||$('report').classList.contains('open')){y0=null;return;} y0=ev.touches[0].clientY;dy=0;pulling=false; },{passive:true});
+  document.addEventListener('touchmove',ev=>{ if(y0==null)return; dy=ev.touches[0].clientY-y0; if(dy>10){pulling=true;const t=Math.min(dy,110);ind.style.transform='translate(-50%,'+(t-60)+'px)';ind.classList.add('show');ind.textContent=dy>90?'放開就重新整理':'下拉重新整理';} },{passive:true});
+  document.addEventListener('touchend',async()=>{ if(!pulling){y0=null;return;} const go=dy>90; y0=null;pulling=false; if(go){ind.textContent='檢查更新中…'; const has=await checkUpdate(false); if(has){ind.textContent='有新版本，正在更新';setTimeout(()=>hardReload(),300);} else {ind.textContent='已是最新版';setTimeout(()=>{ind.classList.remove('show');ind.style.transform='';},900);} } else {ind.classList.remove('show');ind.style.transform='';} });
+})();
+})();
+</script>
+</body></html>
