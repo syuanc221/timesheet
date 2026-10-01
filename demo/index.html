@@ -321,12 +321,23 @@ textarea.big:focus{outline:none;border-color:var(--ink);background:#fff}
   <div class="field"><label>其他雇主的時薪（名字=白天/半夜@半夜起-止，逗號分隔；沒列的會標待補）</label><input type="text" id="sOtherRates" placeholder="星光=300/350@22-7"></div>
   <button class="btn" id="btnFeedback" style="width:100%;margin:6px 0 14px">回報問題／想改哪裡</button>
   <h3 style="font-size:13px;font-weight:700;margin:18px 0 8px">雲端同步（Google Sheet）</h3>
+  <div id="syncSetup">
+    <p class="hint">按一下就有自己的雲端：每次存檔自動備份到你專屬的 Google Sheet，換手機也能還原。</p>
+    <div class="row"><div class="field"><label>名字</label><input type="text" id="suName" placeholder="怎麼稱呼"></div><div class="field"><label>開通碼（跟 Yoona 拿）</label><input type="text" id="suInvite" class="mono" autocapitalize="off" autocorrect="off"></div></div>
+    <button class="btn primary" id="btnSignup" style="width:100%;margin-bottom:10px">建立我的雲端</button>
+    <button class="linkbtn" id="btnSyncManual" style="margin:-2px 0 12px">我有 Yoona 給的網址和密碼，要手動填</button>
+  </div>
+  <div id="syncManual" hidden>
   <div class="field"><label>同步網址（Apps Script 部署網址）</label><input type="url" id="sSyncUrl" placeholder="https://script.google.com/macros/s/…/exec" autocapitalize="off" autocorrect="off"></div>
   <div class="field"><label>密碼（token）</label><input type="text" id="sSyncToken" class="mono" autocapitalize="off" autocorrect="off"></div>
   <div class="field"><label>Google Sheet 網址（給「打開 Google Sheet」按鈕用）</label><input type="url" id="sSheetUrl" placeholder="https://docs.google.com/spreadsheets/d/…" autocapitalize="off" autocorrect="off"></div>
-  <a class="btn primary" id="btnOpenSheet" href="#" target="_blank" rel="noopener" style="width:100%;margin-bottom:10px;text-decoration:none" hidden>打開 Google Sheet</a>
+  </div>
+  <div id="syncLinked" hidden>
+  <a class="btn primary" id="btnOpenSheet" href="#" target="_blank" rel="noopener" style="width:100%;margin-bottom:10px;text-decoration:none">打開 Google Sheet</a>
   <div class="settings-actions" style="margin-top:0"><button class="btn" id="btnSyncNow">立即同步</button><button class="btn" id="btnSyncPull">從雲端還原</button></div>
-  <p class="hint" id="syncInfo">還沒設定。設定好之後每次新增／修改都會自動背景傳到 Google Sheet；沒網路會先排隊。</p>
+  </div>
+  <p class="hint" id="syncInfo">還沒設定。</p>
+  <button class="linkbtn" id="btnSyncUnlink" style="margin:-4px 0 14px" hidden>解除連線／改連別的雲端</button>
   <h3 style="font-size:13px;font-weight:700;margin:18px 0 8px">備份與還原</h3>
   <button class="btn primary" id="btnExportFile" style="width:100%;margin-bottom:10px">備份到「檔案」</button>
   <div class="settings-actions" style="margin-top:0">
@@ -378,7 +389,8 @@ textarea.big:focus{outline:none;border-color:var(--ink);background:#fff}
 <script>
 (function(){
 const KEY='zl-demo-v1';
-const APP_VERSION=18;
+const APP_VERSION=19;
+const SYNC_URL='https://script.google.com/macros/s/AKfycbxVNXCsmYI0ySYA-PB3d521hpfaXI0-I1_a1KtGj5E2tVx62JOUzw4TA53ppQXz2E7c1w/exec';
 const $=id=>document.getElementById(id);
 const pad=n=>String(n).padStart(2,'0');
 const today=new Date();
@@ -599,9 +611,9 @@ $('prevM').addEventListener('click',()=>{view=shift(view,-1);render();});
 $('nextM').addEventListener('click',()=>{view=shift(view,1);render();});
 
 /* settings */
-$('btnSettings').addEventListener('click',()=>{const S=state.settings;$('sName').value=S.name;$('sDay').value=S.dayRate;$('sNight').value=S.nightRate;$('sFlat').value=S.flatRate;$('sPiece').value=S.pieceRate;$('sMin').value=S.minHours;$('sPay').value=S.payDay;$('sOther').value=S.otherKeys||'';$('sOtherRates').value=S.otherRates||'';$('sNF').value=S.nightFrom??22;$('sNT').value=S.nightTo??6;$('sAisle').value=S.aisleRate??350;$('sAisleFrom').value=S.aisleFrom||'2026-09';$('sSyncUrl').value=(state.sync&&state.sync.url)||'';$('sSyncToken').value=(state.sync&&state.sync.token)||'';$('sSheetUrl').value=(state.sync&&state.sync.sheetUrl)||'';renderSyncInfo();renderTrash();openSheet('settingsSheet');});
+$('btnSettings').addEventListener('click',()=>{const S=state.settings;$('sName').value=S.name;$('sDay').value=S.dayRate;$('sNight').value=S.nightRate;$('sFlat').value=S.flatRate;$('sPiece').value=S.pieceRate;$('sMin').value=S.minHours;$('sPay').value=S.payDay;$('sOther').value=S.otherKeys||'';$('sOtherRates').value=S.otherRates||'';$('sNF').value=S.nightFrom??22;$('sNT').value=S.nightTo??6;$('sAisle').value=S.aisleRate??350;$('sAisleFrom').value=S.aisleFrom||'2026-09';$('sSyncUrl').value=(state.sync&&state.sync.url)||'';$('sSyncToken').value=(state.sync&&state.sync.token)||'';$('sSheetUrl').value=(state.sync&&state.sync.sheetUrl)||'';$('syncManual').hidden=true;renderSyncInfo();renderTrash();openSheet('settingsSheet');});
 $('setCancel').addEventListener('click',closeSheets);
-$('setSave').addEventListener('click',()=>{state.settings={name:$('sName').value.trim()||'工時',dayRate:Number($('sDay').value)||260,nightRate:Number($('sNight').value)||310,flatRate:Number($('sFlat').value)||1500,pieceRate:Number($('sPiece').value)||70,minHours:Number($('sMin').value)||0,payDay:Number($('sPay').value)||10,otherKeys:$('sOther').value.trim(),otherRates:$('sOtherRates').value.trim(),nightFrom:Number($('sNF').value)||22,nightTo:Number($('sNT').value)||6,aisleRate:Number($('sAisle').value)||350,aisleFrom:$('sAisleFrom').value||'2026-09',kwV:14,aisleV:16};state.sync=Object.assign({},state.sync||{},{url:$('sSyncUrl').value.trim(),token:$('sSyncToken').value.trim(),sheetUrl:$('sSheetUrl').value.trim()});save();closeSheets();render();});
+$('setSave').addEventListener('click',()=>{state.settings={name:$('sName').value.trim()||'工時',dayRate:Number($('sDay').value)||260,nightRate:Number($('sNight').value)||310,flatRate:Number($('sFlat').value)||1500,pieceRate:Number($('sPiece').value)||70,minHours:Number($('sMin').value)||0,payDay:Number($('sPay').value)||10,otherKeys:$('sOther').value.trim(),otherRates:$('sOtherRates').value.trim(),nightFrom:Number($('sNF').value)||22,nightTo:Number($('sNT').value)||6,aisleRate:Number($('sAisle').value)||350,aisleFrom:$('sAisleFrom').value||'2026-09',kwV:14,aisleV:16};readManual();save();closeSheets();render();});
 $('btnExport').addEventListener('click',async()=>{const txt=JSON.stringify(state);try{await navigator.clipboard.writeText(txt);$('btnExport').textContent='已複製，貼到 LINE 記事本存好';}catch(e){window.prompt('全選複製這段文字：',txt);}setTimeout(()=>$('btnExport').textContent='改用複製文字的方式備份',2500);});
 $('btnImport').addEventListener('click',()=>{const txt=window.prompt('貼上之前備份的內容：');if(!txt)return;try{const s=JSON.parse(txt);if(!Array.isArray(s.entries))throw 0;state=Object.assign(defaults(),s);state.sample=false;save();view=latestStmt()||view;closeSheets();render();}catch(e){alert('這段內容不是有效的備份。');}});
 $('btnWipe').addEventListener('click',()=>{
@@ -940,32 +952,81 @@ async function syncPush(manual){
   }catch(e){ state.sync=Object.assign({},state.sync,{lastError:String(e.message||e)}); try{localStorage.setItem(KEY,JSON.stringify(state));}catch(_){} renderSyncInfo(); renderSyncPill(); if(manual)toast('同步失敗：'+(e.message||e)); }
   syncBusy=false;
 }
+function liveCount(){return state.entries.filter(e=>!e.deleted).length;}
+function applyCloud(st){
+  const keep=state.sync; state=Object.assign(defaults(),{settings:Object.assign(defaults().settings,st.settings||{}),entries:st.entries,sample:false,sync:keep,lastChangeAt:st.lastChangeAt||Date.now()});
+  state.syncDirty=false; try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}
+  view=latestStmt()||view; closeSheets(); render(); toast('已從 Google Sheet 還原 '+liveCount()+' 筆');
+}
+async function fetchCloud(c){
+  const r=await fetch(c.url+'?token='+encodeURIComponent(c.token)+'&action=pull&t='+Date.now()); const j=await r.json();
+  if(!j.ok)throw new Error(j.error==='token'?'密碼不對':(j.error||'server'));
+  return j;
+}
 async function syncPull(){
-  const c=syncCfg(); if(!c){toast('先填同步網址和密碼');return;}
-  if(!confirm('要用 Google Sheet 上的資料取代這支手機的紀錄嗎？（照片不受影響）'))return;
+  const c=syncCfg(); if(!c){toast('還沒連上雲端');return;}
   renderSyncInfo('下載中…');
   try{
-    const r=await fetch(c.url+'?token='+encodeURIComponent(c.token)+'&action=pull&t='+Date.now()); const j=await r.json();
-    if(!j.ok||!j.state||!Array.isArray(j.state.entries))throw new Error(j.error||'雲端沒有資料');
-    const keep=state.sync; state=Object.assign(defaults(),{settings:Object.assign(defaults().settings,j.state.settings||{}),entries:j.state.entries,sample:false,sync:keep,lastChangeAt:j.state.lastChangeAt||Date.now()});
-    state.syncDirty=false; try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}
-    view=latestStmt()||view; closeSheets(); render(); toast('已從 Google Sheet 還原 '+state.entries.filter(e=>!e.deleted).length+' 筆');
+    const j=await fetchCloud(c);
+    if(!j.state||!Array.isArray(j.state.entries))throw new Error('雲端還沒有資料');
+    const n=j.state.entries.filter(e=>!e.deleted).length, m=liveCount();
+    renderSyncInfo();
+    if(!confirm(`雲端有 ${n} 筆、這支手機有 ${m} 筆。\n要用雲端的 ${n} 筆「取代」這支手機的紀錄嗎？（照片不受影響；取代前會自動留一份備份）`))return;
+    try{localStorage.setItem(KEY+'-wipe-backup',JSON.stringify({at:Date.now(),state}));}catch(e){}
+    applyCloud(j.state);
   }catch(e){ renderSyncInfo(); toast('還原失敗：'+(e.message||e)); }
 }
+// 連上一個雲端後：看雲端有沒有東西，決定要上傳還是下載
+async function linkFlow(){
+  const c=syncCfg(); if(!c)return;
+  let n=0, has=false;
+  try{ const j=await fetchCloud(c); has=!!(j.state&&Array.isArray(j.state.entries)); n=has?j.state.entries.filter(e=>!e.deleted).length:0; if(j.name)state.sync.name=j.name; }
+  catch(e){ toast('連不上雲端：'+(e.message||e)); return; }
+  const m=liveCount();
+  if(has&&n>0&&m===0){
+    if(confirm(`已連上雲端。雲端有 ${n} 筆紀錄，這支手機是空的。\n要把雲端的紀錄下載到這支手機嗎？`)){applyCloud(await fetchCloud(c).then(j=>j.state));return;}
+    state.syncDirty=false; try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){} renderSyncInfo(); renderSyncPill(); toast('已連上，之後存檔會傳到雲端'); return;
+  }
+  if(has&&n>0&&m>0){
+    if(!confirm(`已連上雲端。雲端有 ${n} 筆、這支手機有 ${m} 筆。\n按「確定」用這支手機的 ${m} 筆覆蓋雲端；\n按「取消」先不上傳（之後可到設定「從雲端還原」改用雲端的）。`)){state.syncDirty=false;try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){} renderSyncInfo(); renderSyncPill(); return;}
+  }
+  state.syncDirty=true; toast('已連上 Google Sheet 同步'); syncPush(true);
+}
 function renderSyncInfo(msg){
-  const el=$('syncInfo'); if(!el)return; const c=state.sync||{};
+  const el=$('syncInfo'); if(!el)return; const c=state.sync||{}; const on=!!syncCfg();
+  $('syncSetup').hidden=true; $('syncLinked').hidden=!on; $('btnSyncUnlink').hidden=!on; if(on)$('syncManual').hidden=true;
   const ob=$('btnOpenSheet'); if(ob){ob.hidden=!c.sheetUrl; if(c.sheetUrl)ob.href=c.sheetUrl;}
   if(msg){el.textContent=msg;return;}
-  if(!syncCfg()){el.textContent='還沒設定。設定好之後每次新增／修改都會自動背景傳到 Google Sheet；沒網路會先排隊。';return;}
-  let t=c.lastPushAt?'上次同步：'+new Date(c.lastPushAt).toLocaleString('zh-TW'):'還沒同步過';
+  if(!on){el.textContent='展示版沒有雲端功能；正式版（syuanc221.github.io/timesheet）才有。';return;}
+  let t=(c.name?'雲端名稱：'+c.name+'　':'')+(c.lastPushAt?'上次同步：'+new Date(c.lastPushAt).toLocaleString('zh-TW'):'還沒同步過');
   if(state.syncDirty)t+='（有變更還沒傳）'; if(c.lastError)t+='　上次錯誤：'+c.lastError;
   el.textContent=t;
 }
+$('btnSignup').addEventListener('click',async()=>{
+  const name=$('suName').value.trim(); if(!name){toast('先填名字');$('suName').focus();return;}
+  if(!navigator.onLine){toast('現在沒有網路');return;}
+  const b=$('btnSignup'); b.disabled=true; b.textContent='建立中…';
+  try{
+    const r=await fetch(SYNC_URL,{method:'POST',body:JSON.stringify({action:'signup',name,invite:$('suInvite').value.trim()})}); const j=await r.json();
+    if(!j.ok)throw new Error(j.error||'server');
+    state.sync=Object.assign({},state.sync||{},{url:j.url||SYNC_URL,token:j.token,sheetUrl:j.sheetUrl||'',name:j.name||name,lastError:''});
+    if(!state.settings.name||state.settings.name==='工時')state.settings.name=name;
+    state.syncDirty=true; try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}
+    renderSyncInfo(); renderSyncPill(); toast('雲端建好了，正在上傳…'); syncPush(true);
+  }catch(e){toast('建立失敗：'+(e.message||e));}
+  b.disabled=false; b.textContent='建立我的雲端';
+});
+$('btnSyncManual').addEventListener('click',()=>{const m=$('syncManual');m.hidden=!m.hidden;if(!m.hidden)$('sSyncUrl').focus();});
+$('btnSyncUnlink').addEventListener('click',()=>{
+  if(!confirm('解除後這支手機不再自動上傳，手機上的紀錄不會變。確定？'))return;
+  state.sync={}; state.syncDirty=false; try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}
+  $('sSyncUrl').value='';$('sSyncToken').value='';$('sSheetUrl').value=''; renderSyncInfo(); renderSyncPill(); renderBackupBar(); toast('已解除雲端連線');
+});
 $('btnFeedback').addEventListener('click',()=>{$('fbName').value=$('fbName').value||state.settings.name||'';$('fbText').value='';closeSheets();openSheet('feedbackSheet');setTimeout(()=>$('fbText').focus(),250);});
 $('fbCancel').addEventListener('click',closeSheets);
 $('fbSend').addEventListener('click',async()=>{
   const text=$('fbText').value.trim(); if(!text){toast('先寫一點內容');return;}
-  const c=syncCfg(); if(!c){toast('還沒連上 Google Sheet，先請 Yoona 給你同步連結');return;}
+  const c=syncCfg(); if(!c){toast('還沒連上雲端，先到設定「建立我的雲端」');return;}
   $('fbSend').disabled=true;
   try{
     const ctx=$('fbAttach').checked?monthEntries(view).map(e=>{const k=compute(e);return `${e.date} ${e.place} ${e.start||''}-${e.end||''} ${k.hoursText||''} ${k.rateText||''} =${k.amountText||'待補'}${e.tag==='other'?'（其他雇主）':''}`;}).join('\n'):'';
@@ -975,13 +1036,14 @@ $('fbSend').addEventListener('click',async()=>{
   }catch(e){toast('送不出去：'+(e.message||e));}
   $('fbSend').disabled=false;
 });
-$('btnOpenSheet').addEventListener('click',ev=>{const u=(state.sync&&state.sync.sheetUrl)||'';if(!u){ev.preventDefault();toast('還沒連上 Google Sheet，先點 Yoona 給的同步連結');return;}ev.preventDefault();const w=window.open(u,'_blank');if(!w)location.href=u;});
-$('btnSyncNow').addEventListener('click',()=>{state.sync=Object.assign({},state.sync||{},{url:$('sSyncUrl').value.trim(),token:$('sSyncToken').value.trim()});try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){} state.syncDirty=true; syncPush(true);});
-$('btnSyncPull').addEventListener('click',()=>{state.sync=Object.assign({},state.sync||{},{url:$('sSyncUrl').value.trim(),token:$('sSyncToken').value.trim()});syncPull();});
+$('btnOpenSheet').addEventListener('click',ev=>{const u=(state.sync&&state.sync.sheetUrl)||'';if(!u){ev.preventDefault();toast('這個雲端沒有 Sheet 網址');return;}ev.preventDefault();const w=window.open(u,'_blank');if(!w)location.href=u;});
+function readManual(){const m=$('syncManual');if(m.hidden)return;const url=$('sSyncUrl').value.trim(),token=$('sSyncToken').value.trim();if(url&&token)state.sync=Object.assign({},state.sync||{},{url,token,sheetUrl:$('sSheetUrl').value.trim()});}
+$('btnSyncNow').addEventListener('click',()=>{readManual();try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){} state.syncDirty=true; syncPush(true);});
+$('btnSyncPull').addEventListener('click',()=>{readManual();syncPull();});
 window.addEventListener('online',()=>{if(state.syncDirty)scheduleSync();});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&state.syncDirty)scheduleSync();});
-// 一鍵設定：網址帶 #sync=base64(url|token)
-(function(){try{const m=location.hash.match(/#sync=([A-Za-z0-9+/=_-]+)/);if(m){const dec=decodeURIComponent(escape(atob(m[1].replace(/-/g,'+').replace(/_/g,'/'))));const [url,token,sheetUrl]=dec.split('|');if(url&&token){state.sync=Object.assign({},state.sync||{},{url,token,sheetUrl:sheetUrl||''});state.syncDirty=true;try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){} history.replaceState(null,'',location.pathname);setTimeout(()=>{toast('已連上 Google Sheet 同步');syncPush(true);},600);}}}catch(e){}})();
+// 一鍵設定：網址帶 #sync=base64(url|token|sheetUrl)
+(function(){try{const m=location.hash.match(/#sync=([A-Za-z0-9+/=_-]+)/);if(m){const dec=decodeURIComponent(escape(atob(m[1].replace(/-/g,'+').replace(/_/g,'/'))));const [url,token,sheetUrl]=dec.split('|');if(url&&token){const same=state.sync&&state.sync.token===token;state.sync=Object.assign({},state.sync||{},{url,token,sheetUrl:sheetUrl||(state.sync&&state.sync.sheetUrl)||''});try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){} history.replaceState(null,'',location.pathname);setTimeout(()=>{if(same){toast('已經連著這個雲端了');syncPush(false);}else linkFlow();},600);}}}catch(e){}})();
 if(state.syncDirty)setTimeout(()=>syncPush(false),1500);
 
 /* ---------- file backup ---------- */
